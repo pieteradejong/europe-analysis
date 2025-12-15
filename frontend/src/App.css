@@ -1,0 +1,218 @@
+/* Mobile-first responsive container */
+#root {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+  text-align: center;
+
+  /* Ensure content doesn't overflow */
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+/* Responsive logo container */
+.logo-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Mobile-first logo styles */
+.logo {
+  height: 4em;
+  padding: var(--spacing-md);
+  will-change: filter;
+  transition: filter 300ms;
+
+  /* Improve touch interaction */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+/* Logo animation */
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+/* Responsive card component */
+.card {
+  padding: var(--spacing-lg);
+  margin: var(--spacing-lg) 0;
+
+  /* Add visual separation */
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+
+  /* Ensure proper spacing on mobile */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Mobile-friendly button in card */
+.card button {
+  margin-bottom: var(--spacing-md);
+  width: 100%;
+  max-width: 200px;
+}
+
+/* Responsive text */
+.card p {
+  margin: var(--spacing-md) 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.read-the-docs {
+  color: #888;
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xl);
+  line-height: 1.6;
+}
+
+/* Code styling */
+code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+/* Tablet breakpoint */
+@media (min-width: 768px) {
+  #root {
+    padding: var(--spacing-xl);
+  }
+
+  .logo-container {
+    flex-direction: row;
+    justify-content: center;
+    gap: var(--spacing-lg);
+  }
+
+  .logo {
+    height: 5em;
+    padding: var(--spacing-lg);
+  }
+
+  .card {
+    padding: var(--spacing-xl);
+    margin: var(--spacing-xl) auto;
+    max-width: 600px;
+  }
+
+  .card button {
+    width: auto;
+  }
+
+  .card p {
+    font-size: var(--font-size-base);
+  }
+
+  .read-the-docs {
+    font-size: var(--font-size-base);
+  }
+}
+
+/* Desktop breakpoint */
+@media (min-width: 1024px) {
+  #root {
+    padding: var(--spacing-2xl);
+  }
+
+  .logo {
+    height: 6em;
+    padding: var(--spacing-xl);
+  }
+
+  .card {
+    padding: var(--spacing-2xl);
+  }
+}
+
+/* Large desktop breakpoint */
+@media (min-width: 1280px) {
+  .logo {
+    height: 7em;
+  }
+}
+
+/* Landscape mobile optimization */
+@media (max-height: 600px) and (orientation: landscape) {
+  #root {
+    padding: var(--spacing-sm);
+  }
+
+  .logo {
+    height: 3em;
+    padding: var(--spacing-sm);
+  }
+
+  .card {
+    padding: var(--spacing-md);
+    margin: var(--spacing-md) 0;
+  }
+
+  h1 {
+    font-size: var(--font-size-2xl);
+    margin: var(--spacing-sm) 0;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .card {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  code {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+}
+
+/* Dark mode specific adjustments */
+@media (prefers-color-scheme: light) {
+  .card {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  code {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  @media (prefers-contrast: high) {
+    .card {
+      background: rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(0, 0, 0, 0.2);
+    }
+
+    code {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(0, 0, 0, 0.3);
+    }
+  }
+}

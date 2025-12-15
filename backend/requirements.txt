@@ -1,0 +1,12 @@
+black==24.2.0
+ruff==0.2.2
+pytest==8.3.5
+pytest-cov==6.0.0
+httpx==0.27.0
+python-dotenv==1.0.1
+pydantic==2.6.1
+pydantic-settings==2.1.0
+mypy==1.8.0
+fastapi==0.109.2
+uvicorn==0.27.1
+pre-commit==4.0.1
