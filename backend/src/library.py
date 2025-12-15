@@ -39,6 +39,16 @@ class AppConfig(BaseSettings):
     )
     LOG_FILE: Path | None = Field(default=None, env="LOG_FILE")
 
+    # Database
+    DATABASE_URL: str = Field(
+        default="sqlite:///backend/data/demographics.db", env="DATABASE_URL"
+    )
+
+    # Data Acquisition
+    DATA_SOURCES_PATH: Path = Field(default=Path("backend/data/sources"), env="DATA_SOURCES_PATH")
+    API_RATE_LIMIT: float = Field(default=1.0, env="API_RATE_LIMIT")
+    API_TIMEOUT: float = Field(default=30.0, env="API_TIMEOUT")
+
     @validator("ENV")
     def validate_env(cls, v: str) -> str:
         """Validate environment setting."""

@@ -10,3 +10,5 @@ mypy==1.8.0
 fastapi==0.109.2
 uvicorn==0.27.1
 pre-commit==4.0.1
+sqlalchemy>=2.0.0
+alembic>=1.13.0
