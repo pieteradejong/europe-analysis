@@ -32,6 +32,7 @@ class DemographicNormalizer:
         "f": "F",
         "female": "F",
         "feminine": "F",
+        "t": "Total",
         "o": "O",
         "other": "O",
         "unknown": "O",

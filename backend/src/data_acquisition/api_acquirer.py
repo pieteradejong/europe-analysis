@@ -5,7 +5,6 @@ This module provides functionality for acquiring demographic data from HTTP APIs
 Includes rate limiting and retry logic.
 """
 
-import asyncio
 import logging
 import time
 from typing import Any

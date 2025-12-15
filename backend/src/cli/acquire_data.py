@@ -38,7 +38,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--type",
-        choices=["csv", "json", "api"],
+        choices=["csv", "json", "api", "eurostat"],
         default=None,
         help="Source type (auto-detected if not provided)",
     )
@@ -46,6 +46,13 @@ def main() -> None:
         "--field-mapping",
         nargs="*",
         help="Field mappings in format key:value (e.g., age_group:age)",
+    )
+    parser.add_argument(
+        "--acquirer-kwargs",
+        help=(
+            "JSON object of kwargs passed to the acquirer. "
+            "Example for Eurostat: '{\"params\":{\"geo\":\"DE\",\"time\":\"2023\",\"sex\":\"T\",\"age\":\"TOTAL\"}}'"
+        ),
     )
     parser.add_argument(
         "--verbose",
@@ -73,12 +80,16 @@ def main() -> None:
     # Run pipeline
     pipeline = DataAcquisitionPipeline()
     try:
+        acquirer_kwargs = {}
+        if args.acquirer_kwargs:
+            acquirer_kwargs = json.loads(args.acquirer_kwargs)
         logger.info("Starting data acquisition from: %s", args.source)
         result = pipeline.process(
             source=args.source,
             source_name=args.source_name,
             source_type=args.type,
             field_mapping=field_mapping,
+            **acquirer_kwargs,
         )
 
         if result.get("success"):

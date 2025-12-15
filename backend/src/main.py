@@ -189,10 +189,18 @@ class AcquireDataRequest(BaseModel):
     source: str = Field(description="Source identifier (file path or URL)")
     source_name: str = Field(description="Human-readable name for the source")
     source_type: str | None = Field(
-        default=None, description="Source type (csv/json/api). Auto-detected if not provided"
+        default=None,
+        description="Source type (csv/json/api/eurostat). Auto-detected if not provided",
     )
     field_mapping: dict[str, str] | None = Field(
         default=None, description="Optional mapping from source fields to standard fields"
+    )
+    acquirer_kwargs: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Optional keyword args passed to the acquirer. "
+            "For Eurostat, pass e.g. {'params': {'geo':'DE','time':'2023','sex':'T','age':'TOTAL'}}"
+        ),
     )
 
 
@@ -210,6 +218,7 @@ async def acquire_data(request: AcquireDataRequest):
             source_name=request.source_name,
             source_type=request.source_type,
             field_mapping=request.field_mapping,
+            **(request.acquirer_kwargs or {}),
         )
         if result.get("success"):
             return result

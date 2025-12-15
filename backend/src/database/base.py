@@ -27,6 +27,7 @@ _engine = create_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
 
 
+@contextmanager
 def get_session() -> Generator[Session, None, None]:
     """
     Get a database session (context manager).
@@ -62,7 +63,7 @@ def init_db() -> None:
 
 
 # Enable foreign key constraints for SQLite
-@event.listens_for(_engine.sync_engine, "connect")
+@event.listens_for(_engine, "connect")
 def set_sqlite_pragma(dbapi_conn: Any, connection_record: Any) -> None:
     """Enable foreign key constraints for SQLite."""
     if _engine.url.drivername == "sqlite":

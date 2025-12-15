@@ -13,6 +13,7 @@ from .api_acquirer import APIAcquirer
 from .base import DataAcquirer
 from .csv_acquirer import CSVAcquirer
 from .json_acquirer import JSONAcquirer
+from .eurostat.acquirer import EurostatAcquirer
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +52,13 @@ class DataAcquirerFactory:
             return JSONAcquirer(source, **kwargs)
         elif source_type.lower() == "api":
             return APIAcquirer(source, **kwargs)
+        elif source_type.lower() == "eurostat":
+            # For Eurostat, `source` is the dataset id (e.g. 'demo_pjan').
+            return EurostatAcquirer(source, **kwargs)
         else:
             raise ValueError(
                 f"Unknown source type: {source_type}. "
-                "Supported types: csv, json, api"
+                "Supported types: csv, json, api, eurostat"
             )
 
     @staticmethod
