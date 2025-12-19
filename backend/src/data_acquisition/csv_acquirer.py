@@ -65,7 +65,7 @@ class CSVAcquirer(DataAcquirer):
 
         return True
 
-    def acquire(self) -> AcquisitionResult:  # noqa: PLR0915, PLR0912
+    def acquire(self) -> AcquisitionResult:  # noqa: PLR0912, PLR0915
         """
         Acquire data from CSV file.
 

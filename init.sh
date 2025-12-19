@@ -98,9 +98,7 @@ python -m pip install -r backend/requirements.txt
 # Initialize database and run migrations
 echo -e "${green}🗄️  Initializing database and running migrations ...${reset}"
 mkdir -p backend/data
-cd backend
-python -m alembic upgrade head
-cd ..
+python -m alembic -c backend/alembic.ini upgrade head
 echo -e "${green}✅ Database migrations applied${reset}"
 
 # Install pre-commit hooks

@@ -11,14 +11,19 @@ from pathlib import Path
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-# Add the backend/src directory to the path so we can import our modules
-backend_src = Path(__file__).resolve().parent.parent / "src"
-sys.path.insert(0, str(backend_src))
+# Add the project root to the path so we can import our modules with proper package structure
+project_root = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(project_root))
 
-# Import our database configuration
-from database.base import Base  # noqa: E402
-from database.connection import get_database_url  # noqa: E402
-from database.models import DataSource, DemographicData, Region  # noqa: E402, F401
+# Import our database configuration using fully qualified imports
+from backend.src.database.base import Base  # noqa: E402
+from backend.src.database.connection import get_database_url  # noqa: E402
+from backend.src.database.models import (  # noqa: E402, F401
+    DataSource,
+    DemographicData,
+    IndustrialData,
+    Region,
+)
 
 # Import all models so Alembic can detect them
 # This ensures all models are registered with Base.metadata
