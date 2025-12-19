@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,20 +28,24 @@ def _get_dimension(dataset: dict[str, Any], dim_id: str) -> JsonStatDimension:
 
     # category.index can be list (pos->code) or dict (code->pos)
     index = cat.get("index")
+    codes_by_pos: list[str]
     if isinstance(index, list):
         codes_by_pos = [str(x) for x in index]
     elif isinstance(index, dict):
-        codes_by_pos = [None] * len(index)
+        codes_by_pos_temp: list[str | None] = [None] * len(index)
         for code, pos in index.items():
-            codes_by_pos[int(pos)] = str(code)
-        if any(c is None for c in codes_by_pos):
+            codes_by_pos_temp[int(pos)] = str(code)
+        if any(c is None for c in codes_by_pos_temp):
             raise ValueError(f"Invalid JSON-stat category index for dimension {dim_id}")
+        codes_by_pos = [c for c in codes_by_pos_temp if c is not None]
     else:
         raise ValueError(f"Unsupported JSON-stat category index for dimension {dim_id}")
 
     labels = cat.get("label", {}) or {}
     labels_by_code = {str(k): str(v) for k, v in labels.items()}
-    return JsonStatDimension(id=dim_id, codes_by_pos=codes_by_pos, labels_by_code=labels_by_code)
+    return JsonStatDimension(
+        id=dim_id, codes_by_pos=codes_by_pos, labels_by_code=labels_by_code
+    )
 
 
 def _value_to_list(dataset: dict[str, Any], total_size: int) -> list[Any]:
@@ -85,7 +89,7 @@ def flatten_jsonstat_dataset(dataset: dict[str, Any]) -> list[dict[str, Any]]:
     for s in reversed(sizes[1:]):
         prod *= s
         multipliers.append(prod)
-    multipliers = list(reversed(multipliers)) + [1]
+    multipliers = [*list(reversed(multipliers)), 1]
 
     records: list[dict[str, Any]] = []
     for linear_idx, v in enumerate(values):
@@ -93,7 +97,7 @@ def flatten_jsonstat_dataset(dataset: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         idx_remaining = linear_idx
         rec: dict[str, Any] = {}
-        for dim, size, mult in zip(dims, sizes, multipliers, strict=True):
+        for dim, _size, mult in zip(dims, sizes, multipliers, strict=True):
             pos = idx_remaining // mult
             idx_remaining = idx_remaining % mult
             code = dim.codes_by_pos[pos]
@@ -111,7 +115,9 @@ def flatten_jsonstat_dataset(dataset: dict[str, Any]) -> list[dict[str, Any]]:
 _YEAR_RE = re.compile(r"(\d{4})")
 
 
-def normalize_time_to_year(time_code: str | None, time_label: str | None = None) -> int | None:
+def normalize_time_to_year(
+    time_code: str | None, time_label: str | None = None
+) -> int | None:
     if time_code:
         m = _YEAR_RE.search(time_code)
         if m:
@@ -123,7 +129,9 @@ def normalize_time_to_year(time_code: str | None, time_label: str | None = None)
     return None
 
 
-def normalize_sex(code: str | None, label: str | None = None) -> str | None:
+def normalize_sex(  # noqa: PLR0911
+    code: str | None, label: str | None = None
+) -> str | None:
     if code is None and label is None:
         return None
     c = (code or "").strip().upper()
@@ -132,17 +140,19 @@ def normalize_sex(code: str | None, label: str | None = None) -> str | None:
     if c in {"T", "TOTAL"}:
         return "Total"
     # Fallback to label heuristics.
-    l = (label or "").strip().lower()
-    if l in {"male", "men"}:
+    lbl = (label or "").strip().lower()
+    if lbl in {"male", "men"}:
         return "M"
-    if l in {"female", "women"}:
+    if lbl in {"female", "women"}:
         return "F"
-    if l in {"total", "both sexes"}:
+    if lbl in {"total", "both sexes"}:
         return "Total"
     return c or None
 
 
-def normalize_age(code: str | None, label: str | None = None) -> str | None:
+def normalize_age(  # noqa: PLR0911
+    code: str | None, label: str | None = None
+) -> str | None:
     """
     Convert common Eurostat age codes into a string our DemographicNormalizer can parse.
     Examples:
@@ -172,6 +182,4 @@ def normalize_age(code: str | None, label: str | None = None) -> str | None:
     if c.startswith("Y") and c[1:].isdigit():
         return str(int(c[1:]))
     # Fallback to label (often "0-4" etc.)
-    return (label or code)
-
-
+    return label or code

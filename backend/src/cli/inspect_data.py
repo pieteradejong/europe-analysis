@@ -19,8 +19,8 @@ from typing import Any
 backend_src = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_src))
 
-from database import get_session
-from database.repositories import (
+from database import get_session  # noqa: E402
+from database.repositories import (  # noqa: E402
     DataSourceRepository,
     DemographicRepository,
     RegionRepository,
@@ -34,7 +34,9 @@ def print_json(data: Any) -> None:
 
 def main() -> None:
     """Main CLI entry point."""
-    parser = argparse.ArgumentParser(description="Inspect and validate demographic data")
+    parser = argparse.ArgumentParser(
+        description="Inspect and validate demographic data"
+    )
     subparsers = parser.add_subparsers(dest="command", help="Inspection command")
 
     # Sources command
@@ -53,7 +55,9 @@ def main() -> None:
     demo_parser.add_argument("--region-code", help="Filter by region code")
     demo_parser.add_argument("--year", type=int, help="Filter by year")
     demo_parser.add_argument("--gender", help="Filter by gender (M/F/O/Total)")
-    demo_parser.add_argument("--limit", type=int, default=100, help="Maximum results (default: 100)")
+    demo_parser.add_argument(
+        "--limit", type=int, default=100, help="Maximum results (default: 100)"
+    )
 
     # Stats command
     stats_parser = subparsers.add_parser("stats", help="Get database statistics")
@@ -80,7 +84,11 @@ def main() -> None:
                                 "name": s.name,
                                 "type": s.type,
                                 "url": s.url,
-                                "last_updated": s.last_updated.isoformat() if s.last_updated else None,
+                                "last_updated": (
+                                    s.last_updated.isoformat()
+                                    if s.last_updated
+                                    else None
+                                ),
                             }
                             for s in sources
                         ],
@@ -141,7 +149,9 @@ def main() -> None:
                 source_repo = DataSourceRepository(session)
                 region_repo = RegionRepository(session)
 
-                stats = demo_repo.get_statistics(region_id=args.region_id, year=args.year)
+                stats = demo_repo.get_statistics(
+                    region_id=args.region_id, year=args.year
+                )
 
                 print_json(
                     {
@@ -158,4 +168,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

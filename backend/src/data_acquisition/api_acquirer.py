@@ -15,6 +15,10 @@ from .base import AcquisitionResult, DataAcquirer
 
 logger = logging.getLogger(__name__)
 
+# HTTP Status code ranges
+HTTP_CLIENT_ERROR_MIN = 400
+HTTP_SERVER_ERROR_MIN = 500
+
 
 class APIAcquirer(DataAcquirer):
     """
@@ -71,11 +75,15 @@ class APIAcquirer(DataAcquirer):
             True if URL is valid, False otherwise
         """
         if not self.source.startswith(("http://", "https://")):
-            self.logger.error("Invalid API URL (must start with http:// or https://): %s", self.source)
+            self.logger.error(
+                "Invalid API URL (must start with http:// or https://): %s", self.source
+            )
             return False
         return True
 
-    def _extract_data_path(self, data: dict[str, Any] | list[Any]) -> list[dict[str, Any]]:
+    def _extract_data_path(
+        self, data: dict[str, Any] | list[Any]
+    ) -> list[dict[str, Any]]:
         """
         Extract data array from JSON response using data_path or auto-detection.
 
@@ -88,12 +96,12 @@ class APIAcquirer(DataAcquirer):
         if isinstance(data, list):
             return [item for item in data if isinstance(item, dict)]
 
-        if not isinstance(data, dict):
-            return []
+        # At this point, data is a dict (the union type dict | list has been narrowed)
+        dict_data: dict[str, Any] = data
 
         # If data_path is specified, follow it
         if self.data_path:
-            current = data
+            current: Any = dict_data
             for key in self.data_path.split("."):
                 if isinstance(current, dict) and key in current:
                     current = current[key]
@@ -111,18 +119,15 @@ class APIAcquirer(DataAcquirer):
 
         # Auto-detect common patterns
         for key in ["data", "items", "results", "records", "values", "features"]:
-            if key in data:
-                value = data[key]
+            if key in dict_data:
+                value = dict_data[key]
                 if isinstance(value, list):
                     return [item for item in value if isinstance(item, dict)]
                 if isinstance(value, dict):
                     return [value]
 
         # If it's a single object, wrap it in a list
-        if isinstance(data, dict):
-            return [data]
-
-        return []
+        return [dict_data]
 
     def _enforce_rate_limit(self) -> None:
         """Enforce rate limiting by waiting if necessary."""
@@ -134,7 +139,7 @@ class APIAcquirer(DataAcquirer):
             time.sleep(sleep_time)
         self._last_request_time = time.time()
 
-    def acquire(self) -> AcquisitionResult:
+    def acquire(self) -> AcquisitionResult:  # noqa: PLR0911
         """
         Acquire data from API endpoint.
 
@@ -170,7 +175,9 @@ class APIAcquirer(DataAcquirer):
                     try:
                         json_data = response.json()
                     except ValueError as e:
-                        error_msg = f"Invalid JSON response from API: {self.source} - {e}"
+                        error_msg = (
+                            f"Invalid JSON response from API: {self.source} - {e}"
+                        )
                         self.logger.error(error_msg)
                         return AcquisitionResult(success=False, error=error_msg)
 
@@ -206,22 +213,34 @@ class APIAcquirer(DataAcquirer):
 
             except httpx.HTTPStatusError as e:
                 last_error = e
-                error_msg = f"HTTP error {e.response.status_code} from API: {self.source}"
-                self.logger.warning("%s (attempt %d/%d)", error_msg, attempt + 1, self.max_retries + 1)
+                error_msg = (
+                    f"HTTP error {e.response.status_code} from API: {self.source}"
+                )
+                self.logger.warning(
+                    "%s (attempt %d/%d)", error_msg, attempt + 1, self.max_retries + 1
+                )
 
                 # Don't retry on client errors (4xx)
-                if 400 <= e.response.status_code < 500:
+                if (
+                    HTTP_CLIENT_ERROR_MIN
+                    <= e.response.status_code
+                    < HTTP_SERVER_ERROR_MIN
+                ):
                     return AcquisitionResult(success=False, error=error_msg)
 
             except httpx.TimeoutException as e:
                 last_error = e
                 error_msg = f"Timeout connecting to API: {self.source}"
-                self.logger.warning("%s (attempt %d/%d)", error_msg, attempt + 1, self.max_retries + 1)
+                self.logger.warning(
+                    "%s (attempt %d/%d)", error_msg, attempt + 1, self.max_retries + 1
+                )
 
             except httpx.RequestError as e:
                 last_error = e
                 error_msg = f"Request error connecting to API: {self.source} - {e}"
-                self.logger.warning("%s (attempt %d/%d)", error_msg, attempt + 1, self.max_retries + 1)
+                self.logger.warning(
+                    "%s (attempt %d/%d)", error_msg, attempt + 1, self.max_retries + 1
+                )
 
             except Exception as e:
                 last_error = e
@@ -240,4 +259,3 @@ class APIAcquirer(DataAcquirer):
             final_error += f" - {last_error}"
         self.logger.error(final_error)
         return AcquisitionResult(success=False, error=final_error)
-

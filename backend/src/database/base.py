@@ -5,8 +5,9 @@ This module provides SQLAlchemy declarative base and session management.
 """
 
 import logging
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, Generator
+from typing import Any
 
 from sqlalchemy import event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -70,4 +71,3 @@ def set_sqlite_pragma(dbapi_conn: Any, connection_record: Any) -> None:
         cursor = dbapi_conn.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
-

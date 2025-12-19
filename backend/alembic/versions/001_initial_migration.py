@@ -1,13 +1,13 @@
 """Initial migration
 
 Revision ID: 001_initial
-Revises: 
+Revises:
 Create Date: 2024-01-01 00:00:00.000000
 
 """
-from alembic import op
+
 import sqlalchemy as sa
-from sqlalchemy.dialects import sqlite
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "001_initial"
@@ -29,7 +29,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_data_sources_id"), "data_sources", ["id"], unique=False)
-    op.create_index(op.f("ix_data_sources_name"), "data_sources", ["name"], unique=False)
+    op.create_index(
+        op.f("ix_data_sources_name"), "data_sources", ["name"], unique=False
+    )
 
     # Create regions table
     op.create_table(
@@ -113,4 +115,3 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_data_sources_name"), table_name="data_sources")
     op.drop_index(op.f("ix_data_sources_id"), table_name="data_sources")
     op.drop_table("data_sources")
-

@@ -12,8 +12,8 @@ from typing import Any
 from .api_acquirer import APIAcquirer
 from .base import DataAcquirer
 from .csv_acquirer import CSVAcquirer
-from .json_acquirer import JSONAcquirer
 from .eurostat.acquirer import EurostatAcquirer
+from .json_acquirer import JSONAcquirer
 
 logger = logging.getLogger(__name__)
 
@@ -86,9 +86,7 @@ class DataAcquirerFactory:
             return "json"
         elif extension:
             # Unknown extension, default to json
-            logger.warning(
-                "Unknown file extension '%s', defaulting to json", extension
-            )
+            logger.warning("Unknown file extension '%s', defaulting to json", extension)
             return "json"
         else:
             # No extension, try to infer from path
@@ -96,4 +94,3 @@ class DataAcquirerFactory:
                 "No file extension found for '%s', defaulting to json", source
             )
             return "json"
-

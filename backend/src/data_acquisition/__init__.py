@@ -8,15 +8,14 @@ This module provides functionality for acquiring demographic data from various s
 """
 
 from .base import AcquisitionResult, DataAcquirer
+from .eurostat.acquirer import EurostatAcquirer
 from .factory import DataAcquirerFactory
 from .pipeline import DataAcquisitionPipeline
-from .eurostat.acquirer import EurostatAcquirer
 
 __all__ = [
-    "DataAcquirer",
     "AcquisitionResult",
+    "DataAcquirer",
     "DataAcquirerFactory",
     "DataAcquisitionPipeline",
     "EurostatAcquirer",
 ]
-

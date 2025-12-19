@@ -6,10 +6,11 @@ and logging setup.
 """
 
 import logging
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -85,21 +86,25 @@ app = FastAPI(
 #     )
 
 # CORS middleware - configure for your needs
+# Always allow localhost for development, add production domain as needed
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=(
-        ["http://localhost:5173", "http://localhost:3000"]
-        if config.DEBUG
-        else ["https://yourdomain.com"]
-    ),
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
 @app.middleware("http")
-async def add_security_headers(request: Request, call_next):
+async def add_security_headers(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     """Add security headers to all responses."""
     response = await call_next(request)
 
@@ -118,7 +123,7 @@ async def add_security_headers(request: Request, call_next):
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Handle HTTP exceptions."""
     return JSONResponse(
         status_code=exc.status_code,
@@ -127,7 +132,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle unhandled exceptions."""
     # Log the full exception for debugging
     logger = logging.getLogger(__name__)
@@ -142,7 +147,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     """Root endpoint with basic app info."""
     return {
         "name": config.APP_NAME,
@@ -153,30 +158,30 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Basic health check endpoint."""
     return {"status": "healthy", "service": "backend"}
 
 
 @app.get("/health/model")
-async def model_health_check():
+async def model_health_check() -> dict[str, str]:
     """Model health check endpoint."""
     return {"status": "healthy", "service": "model"}
 
 
 @app.get("/notfound")
-async def not_found_example():
+async def not_found_example() -> None:
     """Example endpoint that raises a 404 error."""
     raise HTTPException(status_code=404, detail="Item not found")
 
 
 # Data Acquisition and Querying Endpoints
 
-from pydantic import Field
+from pydantic import Field  # noqa: E402
 
-from .data_acquisition.pipeline import DataAcquisitionPipeline
-from .database import get_session
-from .database.repositories import (
+from .data_acquisition.pipeline import DataAcquisitionPipeline  # noqa: E402
+from .database import get_session  # noqa: E402
+from .database.repositories import (  # noqa: E402
     DataSourceRepository,
     DemographicRepository,
     RegionRepository,
@@ -193,7 +198,8 @@ class AcquireDataRequest(BaseModel):
         description="Source type (csv/json/api/eurostat). Auto-detected if not provided",
     )
     field_mapping: dict[str, str] | None = Field(
-        default=None, description="Optional mapping from source fields to standard fields"
+        default=None,
+        description="Optional mapping from source fields to standard fields",
     )
     acquirer_kwargs: dict[str, Any] | None = Field(
         default=None,
@@ -205,7 +211,7 @@ class AcquireDataRequest(BaseModel):
 
 
 @app.post("/api/data/acquire")
-async def acquire_data(request: AcquireDataRequest):
+async def acquire_data(request: AcquireDataRequest) -> dict[str, Any]:
     """
     Trigger data acquisition from a source.
 
@@ -223,15 +229,19 @@ async def acquire_data(request: AcquireDataRequest):
         if result.get("success"):
             return result
         else:
-            raise HTTPException(status_code=400, detail=result.get("error", "Unknown error"))
+            raise HTTPException(
+                status_code=400, detail=result.get("error", "Unknown error")
+            )
     except Exception as e:
         logger = logging.getLogger(__name__)
         logger.error("Error acquiring data: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error acquiring data: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error acquiring data: {e!s}"
+        ) from None
 
 
 @app.get("/api/data/sources")
-async def list_data_sources():
+async def list_data_sources() -> dict[str, Any]:
     """List all data sources."""
     with get_session() as session:
         repo = DataSourceRepository(session)
@@ -243,8 +253,10 @@ async def list_data_sources():
                     "name": s.name,
                     "type": s.type,
                     "url": s.url,
-                    "last_updated": s.last_updated.isoformat() if s.last_updated else None,
-                    "metadata": s.metadata,
+                    "last_updated": (
+                        s.last_updated.isoformat() if s.last_updated else None
+                    ),
+                    "metadata": s.source_metadata,
                 }
                 for s in sources
             ]
@@ -252,7 +264,7 @@ async def list_data_sources():
 
 
 @app.get("/api/data/regions")
-async def list_regions(query: str | None = None):
+async def list_regions(query: str | None = None) -> dict[str, Any]:
     """
     List available regions.
 
@@ -287,8 +299,8 @@ async def query_demographics(
     gender: str | None = None,
     age_min: int | None = None,
     age_max: int | None = None,
-    limit: int | None = Field(default=1000, le=10000),
-):
+    limit: int = Query(default=1000, le=10000),
+) -> dict[str, Any]:
     """
     Query demographic data with filters.
 
@@ -332,7 +344,9 @@ async def query_demographics(
 
 
 @app.get("/api/data/stats")
-async def get_statistics(region_id: int | None = None, year: int | None = None):
+async def get_statistics(
+    region_id: int | None = None, year: int | None = None
+) -> dict[str, Any]:
     """
     Get database statistics.
 

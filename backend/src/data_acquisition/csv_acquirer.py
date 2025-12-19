@@ -65,7 +65,7 @@ class CSVAcquirer(DataAcquirer):
 
         return True
 
-    def acquire(self) -> AcquisitionResult:
+    def acquire(self) -> AcquisitionResult:  # noqa: PLR0915, PLR0912
         """
         Acquire data from CSV file.
 
@@ -121,20 +121,22 @@ class CSVAcquirer(DataAcquirer):
                             fieldnames=[f"column_{i}" for i in range(len(first_row))],
                         )
 
-                for row_num, row in enumerate(reader, start=1):
+                for _row_num, row in enumerate(reader, start=1):
                     # Clean up values (strip whitespace, handle empty strings)
                     cleaned_row: dict[str, Any] = {}
                     for key, value in row.items():
                         if value is not None:
-                            value = value.strip()
+                            cleaned_value = value.strip()
                             # Try to convert to number if possible
                             try:
-                                if "." in value:
-                                    cleaned_row[key.strip()] = float(value)
+                                if "." in cleaned_value:
+                                    cleaned_row[key.strip()] = float(cleaned_value)
                                 else:
-                                    cleaned_row[key.strip()] = int(value)
+                                    cleaned_row[key.strip()] = int(cleaned_value)
                             except ValueError:
-                                cleaned_row[key.strip()] = value if value else None
+                                cleaned_row[key.strip()] = (
+                                    cleaned_value if cleaned_value else None
+                                )
                         else:
                             cleaned_row[key.strip()] = None
 
@@ -154,7 +156,7 @@ class CSVAcquirer(DataAcquirer):
                 records_count=len(data),
             )
 
-        except PermissionError as e:
+        except PermissionError:
             error_msg = f"Permission denied reading CSV file: {self.source}"
             self.logger.error(error_msg)
             return AcquisitionResult(success=False, error=error_msg)
@@ -173,4 +175,3 @@ class CSVAcquirer(DataAcquirer):
             error_msg = f"Unexpected error reading CSV file: {self.source} - {e}"
             self.logger.error(error_msg, exc_info=True)
             return AcquisitionResult(success=False, error=error_msg)
-

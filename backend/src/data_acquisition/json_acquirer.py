@@ -67,7 +67,9 @@ class JSONAcquirer(DataAcquirer):
 
         return True
 
-    def _extract_data_path(self, data: dict[str, Any] | list[Any]) -> list[dict[str, Any]]:
+    def _extract_data_path(
+        self, data: dict[str, Any] | list[Any]
+    ) -> list[dict[str, Any]]:
         """
         Extract data array from JSON structure using data_path or auto-detection.
 
@@ -81,12 +83,12 @@ class JSONAcquirer(DataAcquirer):
             # Already an array
             return [item for item in data if isinstance(item, dict)]
 
-        if not isinstance(data, dict):
-            return []
+        # At this point, data is a dict (the union type dict | list has been narrowed)
+        dict_data: dict[str, Any] = data
 
         # If data_path is specified, follow it
         if self.data_path:
-            current = data
+            current: Any = dict_data
             for key in self.data_path.split("."):
                 if isinstance(current, dict) and key in current:
                     current = current[key]
@@ -105,16 +107,13 @@ class JSONAcquirer(DataAcquirer):
         # Auto-detect common patterns
         # Try common keys that might contain arrays
         for key in ["data", "items", "results", "records", "values"]:
-            if key in data and isinstance(data[key], list):
-                return [item for item in data[key] if isinstance(item, dict)]
+            if key in dict_data and isinstance(dict_data[key], list):
+                return [item for item in dict_data[key] if isinstance(item, dict)]
 
         # If it's a single object, wrap it in a list
-        if isinstance(data, dict):
-            return [data]
+        return [dict_data]
 
-        return []
-
-    def acquire(self) -> AcquisitionResult:
+    def acquire(self) -> AcquisitionResult:  # noqa: PLR0911
         """
         Acquire data from JSON file.
 
@@ -172,7 +171,7 @@ class JSONAcquirer(DataAcquirer):
             self.logger.error(error_msg)
             return AcquisitionResult(success=False, error=error_msg)
 
-        except PermissionError as e:
+        except PermissionError:
             error_msg = f"Permission denied reading JSON file: {self.source}"
             self.logger.error(error_msg)
             return AcquisitionResult(success=False, error=error_msg)
@@ -186,4 +185,3 @@ class JSONAcquirer(DataAcquirer):
             error_msg = f"Unexpected error reading JSON file: {self.source} - {e}"
             self.logger.error(error_msg, exc_info=True)
             return AcquisitionResult(success=False, error=error_msg)
-

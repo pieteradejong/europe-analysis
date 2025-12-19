@@ -4,19 +4,16 @@ Database Models
 This module defines SQLAlchemy models for demographic data storage.
 """
 
-import json
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy import (
     JSON,
     Column,
+    DateTime,
     ForeignKey,
     Index,
     Integer,
     String,
-    DateTime,
-    Float,
 )
 from sqlalchemy.orm import relationship
 
@@ -33,7 +30,7 @@ class DataSource(Base):
     type = Column(String, nullable=False)  # csv, json, api
     url = Column(String, nullable=False)  # file path or API endpoint
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata = Column(JSON, default=dict)  # Source-specific metadata
+    source_metadata = Column(JSON, default=dict)  # Source-specific metadata
 
     # Relationships
     demographic_data = relationship("DemographicData", back_populates="data_source")
@@ -48,7 +45,9 @@ class Region(Base):
     __tablename__ = "regions"
 
     id = Column(Integer, primary_key=True, index=True)
-    code = Column(String, unique=True, nullable=False, index=True)  # ISO code or identifier
+    code = Column(
+        String, unique=True, nullable=False, index=True
+    )  # ISO code or identifier
     name = Column(String, nullable=False)
     parent_region_id = Column(Integer, ForeignKey("regions.id"), nullable=True)
     level = Column(String, nullable=True)  # country, nuts1, nuts2, nuts3, city
@@ -70,10 +69,14 @@ class DemographicData(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     region_id = Column(Integer, ForeignKey("regions.id"), nullable=False, index=True)
-    data_source_id = Column(Integer, ForeignKey("data_sources.id"), nullable=False, index=True)
+    data_source_id = Column(
+        Integer, ForeignKey("data_sources.id"), nullable=False, index=True
+    )
     year = Column(Integer, nullable=True, index=True)
     age_min = Column(Integer, nullable=True)  # Minimum age (inclusive)
-    age_max = Column(Integer, nullable=True)  # Maximum age (exclusive, None for open-ended)
+    age_max = Column(
+        Integer, nullable=True
+    )  # Maximum age (exclusive, None for open-ended)
     gender = Column(String, nullable=False)  # M, F, O, Total
     population = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -100,4 +103,3 @@ class DemographicData(Base):
             f"year={self.year}, age={self.age_min}-{self.age_max}, "
             f"gender={self.gender}, population={self.population})>"
         )
-

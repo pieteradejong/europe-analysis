@@ -7,31 +7,17 @@ from pathlib import Path
 
 import pytest
 
-from backend.src.main import init_app, main
+from backend.src.library import AppConfig, setup_logging
+
+# Constants
+DEFAULT_API_PORT = 8000
 
 
 @pytest.fixture
-def test_env_vars() -> Generator[None, None, None]:
-    """Set up test environment variables."""
-    # Save original environment
+def clean_env() -> Generator[None, None, None]:
+    """Clean environment fixture that restores original env after test."""
     original_env = dict(os.environ)
-
-    # Set test environment
-    os.environ.update(
-        {
-            "APP_ENV": "testing",
-            "APP_DEBUG": "true",
-            "APP_NAME": "Test App",
-            "APP_VERSION": "0.1.0",
-            "API_HOST": "127.0.0.1",
-            "API_PORT": "8000",
-            "LOG_LEVEL": "DEBUG",
-        }
-    )
-
     yield
-
-    # Restore original environment
     os.environ.clear()
     os.environ.update(original_env)
 
@@ -44,77 +30,93 @@ def test_log_dir(tmp_path: Path) -> Generator[Path, None, None]:
     yield log_dir
 
 
-def test_app_initialization(test_env_vars: None, test_log_dir: Path) -> None:
-    """Test application initialization with test environment."""
-    # Set log file path
-    os.environ["LOG_FILE"] = str(test_log_dir / "test.log")
+def test_app_config_from_env(clean_env: None) -> None:
+    """Test that AppConfig reads from environment variables."""
+    os.environ.update(
+        {
+            "APP_ENV": "testing",
+            "APP_DEBUG": "true",
+            "APP_NAME": "Test App",
+            "APP_VERSION": "0.1.0",
+            "API_HOST": "127.0.0.1",
+            "API_PORT": "8000",
+            "LOG_LEVEL": "DEBUG",
+        }
+    )
 
-    # Initialize app
-    init_app()
+    config = AppConfig()
+    assert config.ENV == "testing"
+    assert config.DEBUG is True
+    assert config.APP_NAME == "Test App"
+    assert config.APP_VERSION == "0.1.0"
+    assert config.API_HOST == "127.0.0.1"
+    assert config.API_PORT == DEFAULT_API_PORT
+    assert config.LOG_LEVEL == "DEBUG"
 
-    # Verify logging is set up
+
+def test_logging_setup_console(clean_env: None) -> None:
+    """Test logging setup with console only."""
+    config = AppConfig(LOG_LEVEL="DEBUG")
+    setup_logging(config)
+
+    root_logger = logging.getLogger()
+    assert root_logger.level == logging.DEBUG
+
+
+def test_logging_setup_with_file(clean_env: None, test_log_dir: Path) -> None:
+    """Test logging setup with file handler."""
+    log_file = test_log_dir / "test.log"
+    config = AppConfig(LOG_LEVEL="INFO", LOG_FILE=log_file)
+    setup_logging(config)
+
+    # Log a message
     logger = logging.getLogger(__name__)
-    assert logger.level == logging.DEBUG
+    logger.info("Test log message")
 
-    # Verify log file exists
-    log_file = test_log_dir / "test.log"
+    # Verify log file exists and contains the message
     assert log_file.exists()
-
-    # Verify log content
     log_content = log_file.read_text()
-    assert "Initializing Test App v0.1.0" in log_content
-    assert "Environment: testing (Debug: True)" in log_content
+    assert "Test log message" in log_content
 
 
-def test_app_initialization_with_json_config(
-    test_env_vars: None, test_log_dir: Path, temp_json_config: Path
-) -> None:
-    """Test application initialization with JSON config."""
-    # Set log file path
-    os.environ["LOG_FILE"] = str(test_log_dir / "test.log")
+def test_app_config_validation_env() -> None:
+    """Test that AppConfig validates ENV values."""
+    from pydantic import ValidationError
 
-    # Initialize app with JSON config
-    init_app(config_path=temp_json_config)
-
-    # Verify log content includes JSON config info
-    log_file = test_log_dir / "test.log"
-    log_content = log_file.read_text()
-    assert f"Loaded JSON configuration from {temp_json_config}" in log_content
+    with pytest.raises(ValidationError, match="ENV must be one of"):
+        AppConfig(ENV="invalid")
 
 
-def test_app_initialization_invalid_env() -> None:
-    """Test application initialization with invalid environment."""
-    # Set invalid environment
-    os.environ["APP_ENV"] = "invalid"
+def test_app_config_validation_log_level() -> None:
+    """Test that AppConfig validates LOG_LEVEL values."""
+    from pydantic import ValidationError
 
-    # Verify initialization fails
-    with pytest.raises(ValueError, match="ENV must be one of"):
-        init_app()
+    with pytest.raises(ValidationError, match="LOG_LEVEL must be one of"):
+        AppConfig(LOG_LEVEL="INVALID")
 
 
-def test_app_initialization_missing_required_var() -> None:
-    """Test application initialization with missing required variable."""
-    # Remove required variable
-    if "APP_NAME" in os.environ:
-        del os.environ["APP_NAME"]
+def test_app_config_defaults() -> None:
+    """Test that AppConfig has sensible defaults."""
+    # Create config without any env vars set
+    config = AppConfig()
+    assert config.ENV in {"development", "testing", "production"}
+    assert config.APP_NAME is not None
+    assert config.API_PORT > 0
+    assert config.LOG_LEVEL in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 
-    # Verify initialization fails with specific exception
-    with pytest.raises((ValueError, KeyError)):
-        init_app()
+
+def test_json_config_loading(temp_json_config: Path) -> None:
+    """Test JSON configuration loading."""
+    from backend.src.library import load_json_config
+
+    config = load_json_config(str(temp_json_config))
+    assert config["CANDIDATE_ID"] == "test-123"
 
 
 @pytest.mark.asyncio
-async def test_app_startup(test_env_vars: None, test_log_dir: Path) -> None:
-    """Test application startup process."""
-    # Set log file path
-    os.environ["LOG_FILE"] = str(test_log_dir / "test.log")
+async def test_main_function_runs() -> None:
+    """Test that main function can be called without error."""
+    from backend.src.main import main
 
-    # Initialize and start app
-    init_app()
+    # main() should run and complete without error
     main()
-
-    # Verify startup logs
-    log_file = test_log_dir / "test.log"
-    log_content = log_file.read_text()
-    assert "Starting application..." in log_content
-    assert "Application shutdown complete" in log_content

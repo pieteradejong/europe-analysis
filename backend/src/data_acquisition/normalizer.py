@@ -7,9 +7,12 @@ input formats into a standardized structure suitable for database storage.
 
 import logging
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
+
+# Minimum length for finding multiple age numbers
+MIN_AGE_NUMBERS = 2
 
 
 class DemographicNormalizer:
@@ -25,7 +28,7 @@ class DemographicNormalizer:
     """
 
     # Gender normalization mappings
-    GENDER_MAPPINGS: dict[str, str] = {
+    GENDER_MAPPINGS: ClassVar[dict[str, str]] = {
         "m": "M",
         "male": "M",
         "masculine": "M",
@@ -43,7 +46,7 @@ class DemographicNormalizer:
     }
 
     # Common age group patterns
-    AGE_PATTERNS = [
+    AGE_PATTERNS: ClassVar[list[tuple[str, str]]] = [
         (r"(\d+)\s*-\s*(\d+)", "range"),  # "0-4", "5-9"
         (r"(\d+)\s*to\s*(\d+)", "range"),  # "0 to 4"
         (r"(\d+)\+", "open"),  # "65+", "80+"
@@ -72,7 +75,9 @@ class DemographicNormalizer:
         gender_str = str(gender).strip().lower()
         return self.GENDER_MAPPINGS.get(gender_str, gender_str.upper())
 
-    def parse_age_group(self, age_str: str | int | None) -> tuple[int | None, int | None]:
+    def parse_age_group(  # noqa: PLR0911
+        self, age_str: str | int | None
+    ) -> tuple[int | None, int | None]:
         """
         Parse age group string into min and max age.
 
@@ -113,13 +118,13 @@ class DemographicNormalizer:
         if len(numbers) == 1:
             age = int(numbers[0])
             return (age, age + 1)
-        elif len(numbers) >= 2:
+        elif len(numbers) >= MIN_AGE_NUMBERS:
             return (int(numbers[0]), int(numbers[1]) + 1)
 
         self.logger.warning("Could not parse age group: %s", age_str)
         return (None, None)
 
-    def normalize_record(
+    def normalize_record(  # noqa: PLR0912, PLR0915
         self,
         record: dict[str, Any],
         field_mapping: dict[str, str] | None = None,
@@ -149,11 +154,11 @@ class DemographicNormalizer:
         region_code = None
         region_name = None
         for key in ["region_code", "region", "code", "iso_code", "nuts_code"]:
-            if key in record and record[key]:
+            if record.get(key):
                 region_code = str(record[key]).strip()
                 break
         for key in ["region_name", "name", "country", "area"]:
-            if key in record and record[key]:
+            if record.get(key):
                 region_name = str(record[key]).strip()
                 break
 
@@ -167,7 +172,7 @@ class DemographicNormalizer:
         # Extract and normalize year
         year = None
         for key in ["year", "date", "period", "time"]:
-            if key in record and record[key]:
+            if record.get(key):
                 try:
                     year_val = record[key]
                     if isinstance(year_val, str):
@@ -194,7 +199,7 @@ class DemographicNormalizer:
         age_min = None
         age_max = None
         for key in ["age", "age_group", "age_range", "age_class"]:
-            if key in record and record[key]:
+            if record.get(key):
                 age_min, age_max = self.parse_age_group(record[key])
                 break
 
@@ -204,7 +209,7 @@ class DemographicNormalizer:
         # Extract and normalize gender
         gender = None
         for key in ["gender", "sex", "male_female"]:
-            if key in record and record[key]:
+            if record.get(key):
                 gender = self.normalize_gender(record[key])
                 break
 
@@ -213,7 +218,7 @@ class DemographicNormalizer:
             male_pop = None
             female_pop = None
             for key in ["male", "m", "men", "population_male"]:
-                if key in record and record[key]:
+                if record.get(key):
                     try:
                         male_pop = int(float(record[key]))
                         break
@@ -221,7 +226,7 @@ class DemographicNormalizer:
                         continue
 
             for key in ["female", "f", "women", "population_female"]:
-                if key in record and record[key]:
+                if record.get(key):
                     try:
                         female_pop = int(float(record[key]))
                         break
@@ -325,4 +330,3 @@ class DemographicNormalizer:
         )
 
         return normalized_records
-

@@ -56,16 +56,16 @@ class DataSourceRepository:
 
         if data_source:
             # Update last_updated timestamp
-            data_source.last_updated = datetime.utcnow()
+            data_source.last_updated = datetime.utcnow()  # type: ignore[assignment]
             if metadata:
-                data_source.metadata = metadata
+                data_source.source_metadata = metadata  # type: ignore[assignment]
             return data_source
 
         data_source = DataSource(
             name=name,
             type=source_type,
             url=url,
-            metadata=metadata or {},
+            source_metadata=metadata or {},
             last_updated=datetime.utcnow(),
         )
         self.session.add(data_source)
@@ -118,11 +118,11 @@ class RegionRepository:
         if region:
             # Update name if changed
             if region.name != name:
-                region.name = name
+                region.name = name  # type: ignore[assignment]
             if level and region.level != level:
-                region.level = level
+                region.level = level  # type: ignore[assignment]
             if parent_region_id and region.parent_region_id != parent_region_id:
-                region.parent_region_id = parent_region_id
+                region.parent_region_id = parent_region_id  # type: ignore[assignment]
             return region
 
         region = Region(
@@ -307,7 +307,9 @@ class DemographicRepository:
         if year:
             query = query.filter(DemographicData.year == year)
 
-        total_population = query.with_entities(func.sum(DemographicData.population)).scalar() or 0
+        total_population = (
+            query.with_entities(func.sum(DemographicData.population)).scalar() or 0
+        )
 
         by_gender = (
             query.with_entities(
@@ -320,7 +322,7 @@ class DemographicRepository:
 
         return {
             "total_population": total_population,
-            "by_gender": {gender: pop for gender, pop in by_gender},
+            "by_gender": {row[0]: row[1] for row in by_gender},
             "record_count": query.count(),
         }
 
@@ -342,4 +344,3 @@ class DemographicRepository:
         self.session.flush()
         logger.info("Deleted %d records for data source %d", count, data_source_id)
         return count
-

@@ -68,7 +68,9 @@ class EurostatAcquirer(DataAcquirer):
 
     def acquire(self) -> AcquisitionResult:
         if not self.validate_source():
-            return AcquisitionResult(success=False, error=f"Invalid dataset id: {self.dataset_id}")
+            return AcquisitionResult(
+                success=False, error=f"Invalid dataset id: {self.dataset_id}"
+            )
 
         # Merge defaults + caller params
         merged_params: dict[str, Any] = {}
@@ -114,7 +116,9 @@ class EurostatAcquirer(DataAcquirer):
                 out.append(
                     {
                         "region_code": str(geo) if geo is not None else None,
-                        "region_name": str(geo_label) if geo_label is not None else str(geo),
+                        "region_name": (
+                            str(geo_label) if geo_label is not None else str(geo)
+                        ),
                         "year": year,
                         "gender": gender,
                         "age_group": age_group,
@@ -140,5 +144,3 @@ class EurostatAcquirer(DataAcquirer):
         except Exception as exc:
             self.logger.error("Eurostat acquisition failed: %s", exc, exc_info=True)
             return AcquisitionResult(success=False, error=str(exc))
-
-

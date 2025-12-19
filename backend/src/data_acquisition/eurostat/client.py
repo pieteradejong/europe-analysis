@@ -16,6 +16,11 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+# HTTP Status code constants
+HTTP_CLIENT_ERROR_MIN = 400
+HTTP_SERVER_ERROR_MIN = 500
+HTTP_TOO_MANY_REQUESTS = 429
+
 
 class EurostatClient:
     """Small HTTP client wrapper with retry/backoff for Eurostat."""
@@ -37,7 +42,9 @@ class EurostatClient:
             "Accept": "application/json",
         }
 
-    def get_dataset(self, dataset_id: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def get_dataset(
+        self, dataset_id: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Fetch a Eurostat dataset slice.
 
@@ -58,13 +65,21 @@ class EurostatClient:
                 with httpx.Client(timeout=self.timeout, headers=self.headers) as client:
                     resp = client.get(url, params=params)
                     resp.raise_for_status()
-                    return resp.json()
-            except (httpx.TimeoutException, httpx.RequestError, httpx.HTTPStatusError) as exc:
+                    result: dict[str, Any] = resp.json()
+                    return result
+            except (
+                httpx.TimeoutException,
+                httpx.RequestError,
+                httpx.HTTPStatusError,
+            ) as exc:
                 last_exc = exc
                 # Don't retry on 4xx (likely a bad query), except 429.
                 if isinstance(exc, httpx.HTTPStatusError):
                     status = exc.response.status_code
-                    if 400 <= status < 500 and status != 429:
+                    if (
+                        HTTP_CLIENT_ERROR_MIN <= status < HTTP_SERVER_ERROR_MIN
+                        and status != HTTP_TOO_MANY_REQUESTS
+                    ):
                         raise
                 if attempt < self.max_retries:
                     sleep_s = self.retry_backoff * (2**attempt)
@@ -83,5 +98,3 @@ class EurostatClient:
 
         # Unreachable, but keeps type-checkers happy.
         raise RuntimeError(f"Eurostat request failed: {last_exc}")
-
-

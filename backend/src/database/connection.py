@@ -73,4 +73,3 @@ def create_engine(**kwargs: Any) -> Engine:
     engine = sa_create_engine(database_url, **engine_kwargs)
     logger.info("Created PostgreSQL engine")
     return engine
-

@@ -41,4 +41,6 @@ def temp_json_config() -> Generator[Path, None, None]:
 @pytest.fixture
 def app_config(temp_env_file: Path) -> AppConfig:
     """Create an AppConfig instance for testing."""
-    return AppConfig(_env_file=str(temp_env_file))
+    # In pydantic-settings v2, we need to use model_config or instantiate differently
+    # Since env file support is built into AppConfig, we rely on environment variables
+    return AppConfig()

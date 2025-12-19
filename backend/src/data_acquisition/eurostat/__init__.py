@@ -9,5 +9,3 @@ normalization + storage pipeline.
 from .acquirer import EurostatAcquirer
 
 __all__ = ["EurostatAcquirer"]
-
-

@@ -24,6 +24,42 @@ check_service() {
     return 1
 }
 
+# Function to ensure a TCP port is free (dev convenience)
+ensure_port_free() {
+    local port=$1
+    local service_name=$2
+
+    # If lsof isn't available, skip (best effort).
+    if ! command -v lsof >/dev/null 2>&1; then
+        return 0
+    fi
+
+    # Collect PIDs listening on the port.
+    local pids
+    pids=$(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | tr '\n' ' ' | xargs echo 2>/dev/null || true)
+
+    if [ -n "$pids" ]; then
+        echo "⚠️  Port $port is already in use. Attempting to stop existing $service_name process(es): $pids"
+        # Try graceful stop first, then force.
+        kill $pids 2>/dev/null || true
+        sleep 1
+        pids=$(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | tr '\n' ' ' | xargs echo 2>/dev/null || true)
+        if [ -n "$pids" ]; then
+            echo "⚠️  Port $port still in use. Forcing stop of: $pids"
+            kill -9 $pids 2>/dev/null || true
+            sleep 1
+        fi
+    fi
+
+    # Final check
+    if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+        echo "❌ Port $port is still in use; cannot start $service_name."
+        echo "   Run: lsof -nP -iTCP:$port -sTCP:LISTEN"
+        echo "   Then kill the PID(s) (or stop the other run.sh instance)."
+        exit 1
+    fi
+}
+
 # Function to wait for a service
 wait_for_service() {
     local service=$1
@@ -196,6 +232,8 @@ mkdir -p backend/logs
 
 # Start Backend
 print_section "Starting Backend"
+# Ensure ports are free (common issue when run.sh is started twice)
+ensure_port_free 8000 "backend"
 # Use the virtual environment's Python and uvicorn explicitly
 start_service "backend" "python3.12 -m uvicorn backend.src.main:app --host 0.0.0.0 --port 8000 --reload" "backend/logs/backend.log"
 
@@ -210,6 +248,7 @@ fi
 
 # Start Frontend
 print_section "Starting Frontend"
+ensure_port_free 5173 "frontend"
 check_frontend_deps
 cd frontend
 start_service "frontend" "npm run dev" "../backend/logs/frontend.log"

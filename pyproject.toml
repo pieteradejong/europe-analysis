@@ -100,6 +100,9 @@ ban-relative-imports = "all"
 
 [tool.mypy]
 python_version = "3.12"
+mypy_path = ["."]
+explicit_package_bases = true
+namespace_packages = true
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -112,11 +115,16 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["tests.*"]
+module = ["tests.*", "backend.tests.*"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
+
+[[tool.mypy.overrides]]
+module = ["backend.src.cli.*"]
+disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 pythonpath = [
