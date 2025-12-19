@@ -7,16 +7,14 @@ This module orchestrates the data acquisition → normalization → storage flow
 import logging
 from typing import Any
 
-from .base import AcquisitionResult
-from .factory import DataAcquirerFactory
-from .normalizer import DemographicNormalizer
-
 from ..database import get_session
 from ..database.repositories import (
     DataSourceRepository,
     DemographicRepository,
     RegionRepository,
 )
+from .factory import DataAcquirerFactory
+from .normalizer import DemographicNormalizer
 
 logger = logging.getLogger(__name__)
 
@@ -115,11 +113,9 @@ class DataAcquisitionPipeline:
             region_repo = RegionRepository(session)
             demo_repo = DemographicRepository(session)
 
-            stats = {
-                "regions_created": 0,
-                "records_inserted": 0,
-                "regions": set(),
-            }
+            regions_created = 0
+            records_inserted = 0
+            seen_regions: set[str] = set()
 
             # Group records by region for efficient processing
             records_by_region: dict[str, list[dict[str, Any]]] = {}
@@ -139,24 +135,29 @@ class DataAcquisitionPipeline:
                     name=first_record.get("region_name") or region_code,
                 )
 
-                if region_code not in stats["regions"]:
-                    stats["regions"].add(region_code)
-                    stats["regions_created"] += 1
+                if region_code not in seen_regions:
+                    seen_regions.add(region_code)
+                    regions_created += 1
 
                 # Bulk insert demographic data
+                # Use int() to ensure we get the actual value, not the Column type
+                region_id = int(region.id) if region.id is not None else 0
+                source_id = int(data_source.id) if data_source.id is not None else 0
                 count = demo_repo.bulk_insert(
                     region_records,
-                    region_id=region.id,
-                    data_source_id=data_source.id,
+                    region_id=region_id,
+                    data_source_id=source_id,
                 )
-                stats["records_inserted"] += count
+                records_inserted += count
 
+            # Capture the data source id before leaving the session context
+            data_source_id = int(data_source.id) if data_source.id is not None else 0
             session.commit()
 
         logger.info(
             "Pipeline completed: %d regions, %d records inserted",
-            stats["regions_created"],
-            stats["records_inserted"],
+            regions_created,
+            records_inserted,
         )
 
         return {
@@ -164,8 +165,7 @@ class DataAcquisitionPipeline:
             "source": source_name,
             "raw_records": len(acquisition_result.data),
             "normalized_records": len(normalized_records),
-            "regions_created": stats["regions_created"],
-            "records_inserted": stats["records_inserted"],
-            "data_source_id": data_source.id,
+            "regions_created": regions_created,
+            "records_inserted": records_inserted,
+            "data_source_id": data_source_id,
         }
-

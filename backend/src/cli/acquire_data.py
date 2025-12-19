@@ -3,21 +3,16 @@
 Command-line tool for data acquisition.
 
 Usage:
-    python -m backend.src.cli.acquire_data <source> <source_name> [--type csv|json|api] [--field-mapping key:value ...]
+    python -m backend.src.cli.acquire_data <source> <source_name> [--type csv|json|api|eurostat] [--field-mapping key:value ...]
 """
 
 import argparse
 import json
 import logging
 import sys
-from pathlib import Path
 
-# Add backend/src to path
-backend_src = Path(__file__).parent.parent
-sys.path.insert(0, str(backend_src))
-
-from data_acquisition.pipeline import DataAcquisitionPipeline
-from library import config, setup_logging
+from backend.src.data_acquisition.pipeline import DataAcquisitionPipeline
+from backend.src.library import config, setup_logging
 
 setup_logging(config)
 logger = logging.getLogger(__name__)
@@ -51,7 +46,7 @@ def main() -> None:
         "--acquirer-kwargs",
         help=(
             "JSON object of kwargs passed to the acquirer. "
-            "Example for Eurostat: '{\"params\":{\"geo\":\"DE\",\"time\":\"2023\",\"sex\":\"T\",\"age\":\"TOTAL\"}}'"
+            'Example for Eurostat: \'{"params":{"geo":"DE","time":"2023","sex":"T","age":"TOTAL"}}\''
         ),
     )
     parser.add_argument(
@@ -72,7 +67,9 @@ def main() -> None:
         field_mapping = {}
         for mapping in args.field_mapping:
             if ":" not in mapping:
-                logger.error("Invalid field mapping format: %s (expected key:value)", mapping)
+                logger.error(
+                    "Invalid field mapping format: %s (expected key:value)", mapping
+                )
                 sys.exit(1)
             key, value = mapping.split(":", 1)
             field_mapping[key.strip()] = value.strip()
@@ -101,7 +98,9 @@ def main() -> None:
             print(f"  Records inserted: {result['records_inserted']}")
             sys.exit(0)
         else:
-            print(f"\n✗ Data acquisition failed: {result.get('error', 'Unknown error')}")
+            print(
+                f"\n✗ Data acquisition failed: {result.get('error', 'Unknown error')}"
+            )
             sys.exit(1)
 
     except Exception as e:
@@ -112,4 +111,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

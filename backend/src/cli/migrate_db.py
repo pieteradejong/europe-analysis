@@ -7,15 +7,12 @@ Usage:
     python -m backend.src.cli.migrate_db downgrade [revision]
     python -m backend.src.cli.migrate_db current
     python -m backend.src.cli.migrate_db history
+    python -m backend.src.cli.migrate_db create-tables
 """
 
 import argparse
 import sys
 from pathlib import Path
-
-# Add backend/src to path
-backend_src = Path(__file__).parent.parent
-sys.path.insert(0, str(backend_src))
 
 try:
     from alembic import command
@@ -31,7 +28,9 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", help="Migration command")
 
     # Upgrade command
-    upgrade_parser = subparsers.add_parser("upgrade", help="Upgrade database to a revision")
+    upgrade_parser = subparsers.add_parser(
+        "upgrade", help="Upgrade database to a revision"
+    )
     upgrade_parser.add_argument(
         "revision",
         nargs="?",
@@ -40,7 +39,9 @@ def main() -> None:
     )
 
     # Downgrade command
-    downgrade_parser = subparsers.add_parser("downgrade", help="Downgrade database to a revision")
+    downgrade_parser = subparsers.add_parser(
+        "downgrade", help="Downgrade database to a revision"
+    )
     downgrade_parser.add_argument(
         "revision",
         nargs="?",
@@ -63,8 +64,9 @@ def main() -> None:
         parser.print_help()
         sys.exit(1)
 
-    # Get alembic config
-    alembic_cfg = Config(str(Path(__file__).parent.parent.parent / "backend" / "alembic.ini"))
+    # Get alembic config - path relative to project root
+    alembic_ini = Path(__file__).parent.parent.parent / "alembic.ini"
+    alembic_cfg = Config(str(alembic_ini))
 
     try:
         if args.command == "upgrade":
@@ -85,7 +87,8 @@ def main() -> None:
 
         elif args.command == "create-tables":
             print("Creating database tables...")
-            from database import init_db
+            # Import using proper package path when run as module
+            from backend.src.database import init_db
 
             init_db()
             print("✓ Database tables created successfully")
@@ -97,4 +100,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

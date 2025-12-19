@@ -162,3 +162,4 @@ cython_debug/
 htmlcov/
 .coverage
 coverage.xml
+backend/data/*.db

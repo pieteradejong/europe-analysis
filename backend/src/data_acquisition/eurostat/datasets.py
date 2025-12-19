@@ -36,9 +36,38 @@ DEMO_PJAN = EurostatDatasetConfig(
     },
 )
 
+# Live births by mother's age
+DEMO_FASEC = EurostatDatasetConfig(
+    dataset_id="demo_fasec",
+    dim_age="age",  # Mother's age
+    default_params={},
+)
+
+# Deaths by age and sex
+DEMO_MAGEC = EurostatDatasetConfig(
+    dataset_id="demo_magec",
+    default_params={},
+)
+
+# Immigration by citizenship
+MIGR_IMM1CTZ = EurostatDatasetConfig(
+    dataset_id="migr_imm1ctz",
+    dim_age="age",
+    default_params={},
+)
+
+# Emigration by citizenship
+MIGR_EMI1CTZ = EurostatDatasetConfig(
+    dataset_id="migr_emi1ctz",
+    dim_age="age",
+    default_params={},
+)
+
 
 DATASETS: dict[str, EurostatDatasetConfig] = {
     DEMO_PJAN.dataset_id: DEMO_PJAN,
+    DEMO_FASEC.dataset_id: DEMO_FASEC,
+    DEMO_MAGEC.dataset_id: DEMO_MAGEC,
+    MIGR_IMM1CTZ.dataset_id: MIGR_IMM1CTZ,
+    MIGR_EMI1CTZ.dataset_id: MIGR_EMI1CTZ,
 }
-
-
