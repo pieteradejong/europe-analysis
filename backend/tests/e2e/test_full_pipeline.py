@@ -1,5 +1,6 @@
 """End-to-end tests for complete data pipeline flows."""
 
+from collections.abc import Generator
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -53,7 +54,7 @@ class TestFullDemographicPipeline:
         engine.dispose()
 
     @pytest.fixture
-    def e2e_session(self, e2e_engine: Any) -> Session:
+    def e2e_session(self, e2e_engine: Any) -> Generator[Session, None, None]:
         """Create a session for E2E tests."""
         session_factory = sessionmaker(bind=e2e_engine)
         session = session_factory()
@@ -82,11 +83,13 @@ class TestFullDemographicPipeline:
             result = acquirer.acquire()
 
             assert result.success is True
+            assert result.data is not None
             assert len(result.data) > 0
 
         # Step 3: Normalize data
         normalizer = DemographicNormalizer()
         normalized_records = []
+        assert result.data is not None
         for record in result.data:
             normalized = normalizer.normalize_record(record)
             if normalized:
@@ -331,7 +334,7 @@ class TestDataRefresh:
         assert initial_count == len(sample_demographic_data)
 
         # Delete old data
-        deleted = demo_repo.delete_by_source(sample_data_source.id)
+        deleted = demo_repo.delete_by_source(sample_data_source.id)  # type: ignore[arg-type]
         assert deleted == len(sample_demographic_data)
 
         # Verify deletion
@@ -356,7 +359,9 @@ class TestDataRefresh:
             },
         ]
         count = demo_repo.bulk_insert(
-            new_records, sample_region.id, sample_data_source.id
+            new_records,
+            sample_region.id,
+            sample_data_source.id,  # type: ignore[arg-type]
         )
         assert count == 2
 

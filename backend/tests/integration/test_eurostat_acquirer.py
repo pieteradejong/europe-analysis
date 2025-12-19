@@ -65,6 +65,7 @@ class TestEurostatAcquirer:
         result = acquirer.acquire()
 
         assert result.success is False
+        assert result.error is not None
         assert "Invalid dataset id" in result.error
 
     @patch("backend.src.data_acquisition.eurostat.acquirer.EurostatClient")
@@ -88,6 +89,7 @@ class TestEurostatAcquirer:
         assert result.success is True
         assert result.data is not None
         assert len(result.data) > 0
+        assert result.records_count is not None
         assert result.records_count == len(result.data)
 
     @patch("backend.src.data_acquisition.eurostat.acquirer.EurostatClient")
@@ -105,6 +107,7 @@ class TestEurostatAcquirer:
         result = acquirer.acquire()
 
         assert result.success is True
+        assert result.data is not None
 
         # Check first record has expected fields
         first_record = result.data[0]
@@ -129,6 +132,7 @@ class TestEurostatAcquirer:
 
         acquirer = EurostatAcquirer(source="demo_pjan")
         result = acquirer.acquire()
+        assert result.data is not None
 
         # Find a German record
         de_record = next(r for r in result.data if r["region_code"] == "DE")
@@ -151,6 +155,7 @@ class TestEurostatAcquirer:
 
         acquirer = EurostatAcquirer(source="demo_pjan")
         result = acquirer.acquire()
+        assert result.data is not None
 
         # All year values should be integers
         years = {r["year"] for r in result.data}
@@ -169,6 +174,7 @@ class TestEurostatAcquirer:
 
         acquirer = EurostatAcquirer(source="demo_pjan")
         result = acquirer.acquire()
+        assert result.data is not None
 
         genders = {r["gender"] for r in result.data}
         assert genders == {"M", "F"}
@@ -186,6 +192,7 @@ class TestEurostatAcquirer:
 
         acquirer = EurostatAcquirer(source="demo_pjan")
         result = acquirer.acquire()
+        assert result.data is not None
 
         age_groups = {r["age_group"] for r in result.data}
         # Y0-4 -> "0-4", Y5-9 -> "5-9", Y_GE85 -> "85+"
@@ -289,6 +296,7 @@ class TestEurostatAcquirer:
         result = acquirer.acquire()
 
         assert result.success is True
+        assert result.data is not None
         assert len(result.data) == 1
         assert result.data[0]["region_code"] == "DE"
 
@@ -303,6 +311,7 @@ class TestEurostatAcquirer:
         result = acquirer.acquire()
 
         assert result.success is False
+        assert result.error is not None
         assert "Network error" in result.error
 
     @patch("backend.src.data_acquisition.eurostat.acquirer.EurostatClient")
@@ -321,6 +330,7 @@ class TestEurostatAcquirer:
             params={"geo": "DE"},
         )
         result = acquirer.acquire()
+        assert result.data is not None
 
         for record in result.data:
             assert "_eurostat" in record

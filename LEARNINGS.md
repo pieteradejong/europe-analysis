@@ -1,5 +1,60 @@
 ## Learnings
 
+### 2025-12-19 — SQLAlchemy + mypy type checking issues
+
+- **Symptom**: mypy reports `Column[str]` or `Column[int]` type errors when accessing model instance attributes (e.g., `model.id`, `model.name`)
+- **Root cause**: SQLAlchemy's Column() descriptors appear as `Column[T]` at the class level to mypy, not the runtime `T` type
+- **Fix options**:
+  1. Use SQLAlchemy 2.0's `Mapped[T]` annotations on model columns
+  2. Add `# type: ignore[arg-type]` on affected test lines (pragmatic for test code)
+  3. Cast values explicitly: `cast(int, model.id)`
+- **Related issues**:
+  - `backref="sub_regions"` creates dynamic attributes mypy can't see → use `# type: ignore[attr-defined]`
+  - Some mypy "unreachable" false positives in test assertions → use `# type: ignore[unreachable]`
+  - Import `Generator` from `collections.abc` not `typing` (Python 3.9+ best practice, ruff UP035)
+
+---
+
+### 2025-12-19 — ESLint globals for test files
+
+- **Symptom**: `'global' is not defined (no-undef)` when mocking `global.fetch` in tests
+- **Root cause**: ESLint config only included `globals.browser`, which doesn't include `global`
+- **Fix**: Extend globals in eslint.config.js:
+  ```javascript
+  globals: {
+    ...globals.browser,
+    global: 'writable',  // For test mocking
+  }
+  ```
+
+---
+
+### 2025-12-19 — Keeping `noqa` directives up to date
+
+- **Symptom**: Ruff reports `RUF100 Unused noqa directive`
+- **Root cause**: Code was refactored/simplified but the `# noqa` comment remained
+- **Example**: Function was simplified to no longer trigger `PLR0912` (too many branches), but `# noqa: PLR0912` was still present
+- **Fix**: Remove obsolete noqa comments, or use `ruff check --fix` to auto-remove them
+- **Lesson**: When refactoring code, review and clean up suppression comments
+
+---
+
+### 2025-12-19 — Python 3.9+ import modernization
+
+- **Symptom**: Ruff reports `UP035 Import from collections.abc instead`
+- **Root cause**: `typing.Generator`, `typing.Callable`, etc. are deprecated in favor of `collections.abc` equivalents
+- **Fix**: Change imports:
+  ```python
+  # Before (deprecated)
+  from typing import Generator, Callable, Iterable
+  
+  # After (Python 3.9+)
+  from collections.abc import Generator, Callable, Iterable
+  ```
+- **Note**: `typing.Any`, `typing.Optional`, `typing.Union` still come from `typing`
+
+---
+
 ### 2025-12-19 — `run.sh` backend not ready (port already in use)
 - **Symptom**: Backend health check never becomes ready; logs show `Address already in use`.
 - **Root cause**: A prior `uvicorn`/Python process was already listening on **TCP 8000** (and sometimes the Vite dev server on **5173**).
@@ -340,15 +395,96 @@ rm -f backend/data/test_demographics.db
 
 ---
 
+### 9. Keeping Linter Suppressions Clean
+
+When using `# noqa`, `# type: ignore`, or `// eslint-disable`, follow these practices:
+
+```python
+# BAD: Broad suppression hides real issues
+def process(data):  # type: ignore
+    ...
+
+# GOOD: Specific suppression with reason
+def process(data):  # type: ignore[arg-type]  # SQLAlchemy Column descriptor
+    ...
+
+# BAD: Obsolete suppression (code was fixed but comment remains)
+def simple_func():  # noqa: PLR0912  # This no longer has many branches!
+    return x + y
+
+# GOOD: Remove suppression after fixing the issue
+def simple_func():
+    return x + y
+```
+
+**Maintenance tips:**
+- Run `ruff check --fix` periodically to auto-remove unused `noqa` comments
+- Use specific error codes: `# type: ignore[arg-type]` not just `# type: ignore`
+- Add brief comments explaining WHY the suppression is needed
+- Review suppressions during code review
+
+---
+
+### 10. Handling mypy with SQLAlchemy Models
+
+When using mypy with SQLAlchemy's legacy Column() style, model attributes appear as `Column[T]` instead of `T` to the type checker.
+
+**Option A: Add type annotations (SQLAlchemy 2.0 style)**
+```python
+from sqlalchemy.orm import Mapped, mapped_column
+
+class Region(Base):
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String, unique=True)
+    name: Mapped[str] = mapped_column(String)
+```
+
+**Option B: Type ignores in tests (pragmatic)**
+```python
+def test_get_or_create_existing(self, sample_data_source: DataSource) -> None:
+    # Pass model attributes with type ignore
+    data_source = repo.get_or_create(
+        name=sample_data_source.name,  # type: ignore[arg-type]
+        source_type=sample_data_source.type,  # type: ignore[arg-type]
+    )
+```
+
+**Option C: Add None assertions before accessing optional fields**
+```python
+# Instead of directly accessing result.data which could be None:
+assert result.data is not None  # Narrows type for mypy
+first_record = result.data[0]   # Now safe
+```
+
+**Benefits:**
+- Option A provides full type safety but requires model refactoring
+- Option B is quick for existing codebases where tests work at runtime
+- Option C improves both type safety AND test correctness
+
+---
+
 ### Summary: Project Template Checklist
 
 When starting a new project, include:
 
+**Shell Scripts:**
 - [ ] `init.sh` with migration step after dependency install
 - [ ] `run.sh` with migration check + port management
 - [ ] `test.sh` with isolated test database
+
+**Backend Patterns:**
 - [ ] Repository classes for each entity type
 - [ ] Normalizer classes for external data sources
 - [ ] Frozen dataclass configs for datasets
 - [ ] Consistent API response envelope
+- [ ] SQLAlchemy 2.0 `Mapped[]` annotations for mypy compatibility
+
+**Frontend Patterns:**
 - [ ] Tabbed UI pattern with lifted state
+- [ ] ESLint globals configured for test environment (`global`, `vi`, etc.)
+
+**Code Quality:**
+- [ ] Use specific `# type: ignore[error-code]` with comments explaining why
+- [ ] Use `collections.abc` for `Generator`, `Callable`, `Iterable` imports (Python 3.9+)
+- [ ] Run `ruff check --fix` periodically to clean up obsolete `noqa` comments
+- [ ] Add `assert x is not None` before accessing optional fields (helps both mypy and tests)

@@ -43,9 +43,9 @@ class TestDataSourceRepository:
 
         # Get the same source again
         data_source = repo.get_or_create(
-            name=sample_data_source.name,
-            source_type=sample_data_source.type,
-            url=sample_data_source.url,
+            name=sample_data_source.name,  # type: ignore[arg-type]
+            source_type=sample_data_source.type,  # type: ignore[arg-type]
+            url=sample_data_source.url,  # type: ignore[arg-type]
         )
 
         assert data_source.id == original_id
@@ -58,9 +58,9 @@ class TestDataSourceRepository:
         new_metadata = {"updated": True, "version": "2.0"}
 
         data_source = repo.get_or_create(
-            name=sample_data_source.name,
-            source_type=sample_data_source.type,
-            url=sample_data_source.url,
+            name=sample_data_source.name,  # type: ignore[arg-type]
+            source_type=sample_data_source.type,  # type: ignore[arg-type]
+            url=sample_data_source.url,  # type: ignore[arg-type]
             metadata=new_metadata,
         )
 
@@ -71,7 +71,7 @@ class TestDataSourceRepository:
     ) -> None:
         """Test getting data source by ID."""
         repo = DataSourceRepository(test_session)
-        data_source = repo.get_by_id(sample_data_source.id)
+        data_source = repo.get_by_id(sample_data_source.id)  # type: ignore[arg-type]
 
         assert data_source is not None
         assert data_source.id == sample_data_source.id
@@ -126,8 +126,8 @@ class TestRegionRepository:
         original_id = sample_region.id
 
         region = repo.get_or_create(
-            code=sample_region.code,
-            name=sample_region.name,
+            code=sample_region.code,  # type: ignore[arg-type]
+            name=sample_region.name,  # type: ignore[arg-type]
         )
 
         assert region.id == original_id
@@ -139,7 +139,7 @@ class TestRegionRepository:
         repo = RegionRepository(test_session)
 
         region = repo.get_or_create(
-            code=sample_region.code,
+            code=sample_region.code,  # type: ignore[arg-type]
             name="Deutschland",  # Updated name
         )
 
@@ -163,7 +163,7 @@ class TestRegionRepository:
     def test_get_by_id(self, test_session: Session, sample_region: Region) -> None:
         """Test getting region by ID."""
         repo = RegionRepository(test_session)
-        region = repo.get_by_id(sample_region.id)
+        region = repo.get_by_id(sample_region.id)  # type: ignore[arg-type]
 
         assert region is not None
         assert region.id == sample_region.id
@@ -251,7 +251,11 @@ class TestDemographicRepository:
             },
         ]
 
-        count = repo.bulk_insert(records, sample_region.id, sample_data_source.id)
+        count = repo.bulk_insert(
+            records,
+            sample_region.id,
+            sample_data_source.id,  # type: ignore[arg-type]
+        )
 
         assert count == 3
 
@@ -272,7 +276,7 @@ class TestDemographicRepository:
     ) -> None:
         """Test querying by region ID."""
         repo = DemographicRepository(test_session)
-        results = repo.query(region_id=sample_region.id)
+        results = repo.query(region_id=sample_region.id)  # type: ignore[arg-type]
 
         assert len(results) == len(sample_demographic_data)
 
@@ -332,7 +336,7 @@ class TestDemographicRepository:
     ) -> None:
         """Test getting statistics filtered by region."""
         repo = DemographicRepository(test_session)
-        stats = repo.get_statistics(region_id=sample_region.id)
+        stats = repo.get_statistics(region_id=sample_region.id)  # type: ignore[arg-type]
 
         assert stats["total_records"] == len(sample_demographic_data)
 
@@ -344,7 +348,7 @@ class TestDemographicRepository:
     ) -> None:
         """Test deleting demographic data by source."""
         repo = DemographicRepository(test_session)
-        deleted_count = repo.delete_by_source(sample_data_source.id)
+        deleted_count = repo.delete_by_source(sample_data_source.id)  # type: ignore[arg-type]
 
         assert deleted_count == len(sample_demographic_data)
 
@@ -381,7 +385,11 @@ class TestIndustrialRepository:
             },
         ]
 
-        count = repo.bulk_insert(records, sample_region.id, sample_data_source.id)
+        count = repo.bulk_insert(
+            records,
+            sample_region.id,
+            sample_data_source.id,  # type: ignore[arg-type]
+        )
 
         assert count == 2
 
@@ -402,7 +410,7 @@ class TestIndustrialRepository:
     ) -> None:
         """Test querying by region ID."""
         repo = IndustrialRepository(test_session)
-        results = repo.query(region_id=sample_region.id)
+        results = repo.query(region_id=sample_region.id)  # type: ignore[arg-type]
 
         assert len(results) == len(sample_industrial_data)
 
@@ -483,7 +491,7 @@ class TestIndustrialRepository:
     ) -> None:
         """Test deleting industrial data by source."""
         repo = IndustrialRepository(test_session)
-        deleted_count = repo.delete_by_source(sample_data_source.id)
+        deleted_count = repo.delete_by_source(sample_data_source.id)  # type: ignore[arg-type]
 
         assert deleted_count == len(sample_industrial_data)
 

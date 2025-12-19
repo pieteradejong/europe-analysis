@@ -117,7 +117,7 @@ class TestRegionModel:
         test_session.flush()
 
         assert child.parent_region == parent
-        assert child in parent.sub_regions
+        assert child in parent.sub_regions  # type: ignore[attr-defined]
 
 
 class TestDemographicDataModel:
@@ -423,4 +423,4 @@ class TestComputedMetricModel:
         test_session.flush()
 
         assert data.period_month is None
-        assert data.period_quarter == 4
+        assert data.period_quarter == 4  # type: ignore[unreachable]

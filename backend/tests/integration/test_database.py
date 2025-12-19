@@ -228,7 +228,11 @@ class TestFullWorkflow:
                 "population": 2000000,
             },
         ]
-        count = demo_repo.bulk_insert(records, region.id, data_source.id)
+        count = demo_repo.bulk_insert(
+            records,
+            region.id,
+            data_source.id,  # type: ignore[arg-type]
+        )
         assert count == 4
 
         # 4. Query data back
@@ -236,7 +240,7 @@ class TestFullWorkflow:
         assert len(results) == 4
 
         # 5. Get statistics
-        stats = demo_repo.get_statistics(region_id=region.id)
+        stats = demo_repo.get_statistics(region_id=region.id)  # type: ignore[arg-type]
         assert stats["total_records"] == 4
 
     def test_industrial_data_workflow(self, test_session: Session) -> None:
@@ -282,7 +286,11 @@ class TestFullWorkflow:
                 "unit": "I15",
             },
         ]
-        count = industrial_repo.bulk_insert(records, region.id, data_source.id)
+        count = industrial_repo.bulk_insert(
+            records,
+            region.id,
+            data_source.id,  # type: ignore[arg-type]
+        )
         assert count == 3
 
         # 4. Query data back (should be ordered by date descending)
@@ -311,20 +319,20 @@ class TestFullWorkflow:
             code="DE2",
             name="Bavaria",
             level="nuts1",
-            parent_region_id=germany.id,
+            parent_region_id=germany.id,  # type: ignore[arg-type]
         )
         nrw = region_repo.get_or_create(
             code="DE7",
             name="North Rhine-Westphalia",
             level="nuts1",
-            parent_region_id=germany.id,
+            parent_region_id=germany.id,  # type: ignore[arg-type]
         )
 
         # Verify hierarchy
         assert bavaria.parent_region == germany
         assert nrw.parent_region == germany
-        assert bavaria in germany.sub_regions
-        assert nrw in germany.sub_regions
+        assert bavaria in germany.sub_regions  # type: ignore[attr-defined]
+        assert nrw in germany.sub_regions  # type: ignore[attr-defined]
 
     def test_data_cleanup_workflow(
         self, test_session: Session, sample_demographic_data: list[DemographicData]
@@ -338,7 +346,7 @@ class TestFullWorkflow:
         assert initial_count == len(sample_demographic_data)
 
         # Delete by source
-        deleted = demo_repo.delete_by_source(data_source_id)
+        deleted = demo_repo.delete_by_source(data_source_id)  # type: ignore[arg-type]
         assert deleted == len(sample_demographic_data)
 
         # Verify data is gone
