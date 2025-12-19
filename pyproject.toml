@@ -96,6 +96,7 @@ ban-relative-imports = "all"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "PLR2004"]  # Allow assert in tests, allow magic numbers
+"backend/tests/*" = ["S101", "PLR2004"]  # Allow assert in tests, allow magic numbers
 "backend/src/library.py" = ["N805"]  # Allow cls parameter in pydantic validators
 
 [tool.mypy]
