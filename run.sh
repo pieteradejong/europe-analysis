@@ -230,6 +230,19 @@ echo "✅ uvicorn is installed in virtual environment"
 # Create logs directory if it doesn't exist
 mkdir -p backend/logs
 
+# Check and apply any pending migrations
+print_section "Database Migrations"
+echo "Checking for pending database migrations..."
+mkdir -p backend/data
+cd backend
+if python3.12 -m alembic upgrade head; then
+    echo "✅ Database migrations up to date"
+else
+    echo "❌ Failed to apply database migrations"
+    exit 1
+fi
+cd ..
+
 # Start Backend
 print_section "Starting Backend"
 # Ensure ports are free (common issue when run.sh is started twice)

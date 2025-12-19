@@ -10,12 +10,13 @@ from .connection import create_engine, get_database_url
 
 # Import models to ensure they're registered with Base.metadata
 # This must happen before init_db() is called
-from .models import DataSource, DemographicData, Region
+from .models import DataSource, DemographicData, IndustrialData, Region
 
 __all__ = [
     "Base",
     "DataSource",
     "DemographicData",
+    "IndustrialData",
     "Region",
     "create_engine",
     "get_database_url",

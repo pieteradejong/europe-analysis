@@ -184,6 +184,7 @@ from .database import get_session  # noqa: E402
 from .database.repositories import (  # noqa: E402
     DataSourceRepository,
     DemographicRepository,
+    IndustrialRepository,
     RegionRepository,
 )
 
@@ -356,16 +357,87 @@ async def get_statistics(
     """
     with get_session() as session:
         demo_repo = DemographicRepository(session)
+        industrial_repo = IndustrialRepository(session)
         source_repo = DataSourceRepository(session)
         region_repo = RegionRepository(session)
 
-        stats = demo_repo.get_statistics(region_id=region_id, year=year)
+        demo_stats = demo_repo.get_statistics(region_id=region_id, year=year)
+        industrial_stats = industrial_repo.get_statistics(
+            region_id=region_id, year=year
+        )
 
         return {
             "total_sources": len(source_repo.list_all()),
             "total_regions": len(region_repo.list_all()),
-            "demographics": stats,
+            "demographics": demo_stats,
+            "industrial": industrial_stats,
         }
+
+
+@app.get("/api/data/industrial")
+async def query_industrial(
+    region_id: int | None = None,
+    region_code: str | None = None,
+    year: int | None = None,
+    month: int | None = None,
+    nace_code: str | None = None,
+    limit: int = Query(default=1000, le=10000),
+) -> dict[str, Any]:
+    """
+    Query industrial production data with filters.
+
+    Args:
+        region_id: Filter by region ID
+        region_code: Filter by region code
+        year: Filter by year
+        month: Filter by month (1-12)
+        nace_code: Filter by NACE industry code
+        limit: Maximum number of results (default: 1000, max: 10000)
+    """
+    with get_session() as session:
+        repo = IndustrialRepository(session)
+        data = repo.query(
+            region_id=region_id,
+            region_code=region_code,
+            year=year,
+            month=month,
+            nace_code=nace_code,
+            limit=limit,
+        )
+        return {
+            "count": len(data),
+            "data": [
+                {
+                    "id": d.id,
+                    "region_id": d.region_id,
+                    "region_code": d.region.code if d.region else None,
+                    "region_name": d.region.name if d.region else None,
+                    "year": d.year,
+                    "month": d.month,
+                    "nace_code": d.nace_code,
+                    "index_value": d.index_value,
+                    "unit": d.unit,
+                }
+                for d in data
+            ],
+        }
+
+
+@app.get("/api/data/industrial/stats")
+async def get_industrial_statistics(
+    region_id: int | None = None, year: int | None = None
+) -> dict[str, Any]:
+    """
+    Get industrial data statistics.
+
+    Args:
+        region_id: Optional region ID to filter statistics
+        year: Optional year to filter statistics
+    """
+    with get_session() as session:
+        repo = IndustrialRepository(session)
+        stats = repo.get_statistics(region_id=region_id, year=year)
+        return stats
 
 
 if __name__ == "__main__":

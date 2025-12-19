@@ -95,6 +95,14 @@ echo -e "${green}📦 Installing Python dependencies ...${reset}"
 python -m pip install --upgrade pip
 python -m pip install -r backend/requirements.txt
 
+# Initialize database and run migrations
+echo -e "${green}🗄️  Initializing database and running migrations ...${reset}"
+mkdir -p backend/data
+cd backend
+python -m alembic upgrade head
+cd ..
+echo -e "${green}✅ Database migrations applied${reset}"
+
 # Install pre-commit hooks
 echo -e "${green}🔗 Installing pre-commit hooks ...${reset}"
 pre-commit install

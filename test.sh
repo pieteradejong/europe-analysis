@@ -93,6 +93,33 @@ else
 fi
 
 # ============================================
+# DATABASE SETUP FOR TESTS
+# ============================================
+if [ "$FRONTEND_ONLY" = false ]; then
+    print_section "🗄️  Database Setup"
+    
+    echo "Setting up test database..."
+    # Use a separate test database
+    export DATABASE_URL="sqlite:///backend/data/test_demographics.db"
+    
+    # Remove old test database for clean state
+    rm -f backend/data/test_demographics.db
+    
+    # Ensure data directory exists
+    mkdir -p backend/data
+    
+    # Run migrations on test database
+    cd backend
+    if python -m alembic upgrade head; then
+        print_success "Test database migrations applied"
+    else
+        print_failure "Failed to apply test database migrations"
+        exit 1
+    fi
+    cd ..
+fi
+
+# ============================================
 # LINTING
 # ============================================
 if [ "$QUICK" = false ]; then
@@ -235,6 +262,11 @@ if [ "$BACKEND_ONLY" = false ]; then
 fi
 
 echo ""
+
+# Clean up test database
+if [ "$FRONTEND_ONLY" = false ]; then
+    rm -f backend/data/test_demographics.db
+fi
 
 if [ $TOTAL_FAILURES -eq 0 ]; then
     echo -e "${GREEN}=== ✅ All Tests Passed ===${NC}"

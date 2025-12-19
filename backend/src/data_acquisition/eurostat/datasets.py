@@ -63,6 +63,20 @@ MIGR_EMI1CTZ = EurostatDatasetConfig(
     default_params={},
 )
 
+# Industrial Production Index (monthly)
+STS_INPR_M = EurostatDatasetConfig(
+    dataset_id="sts_inpr_m",
+    dim_geo="geo",
+    dim_time="time",
+    dim_sex="",  # Not applicable for industrial data
+    dim_age="",  # Not applicable for industrial data
+    default_params={
+        "unit": "I15",  # Index 2015=100
+        "s_adj": "SCA",  # Seasonally and calendar adjusted
+        "nace_r2": "B-D",  # Mining, manufacturing, electricity
+    },
+)
+
 
 DATASETS: dict[str, EurostatDatasetConfig] = {
     DEMO_PJAN.dataset_id: DEMO_PJAN,
@@ -70,4 +84,5 @@ DATASETS: dict[str, EurostatDatasetConfig] = {
     DEMO_MAGEC.dataset_id: DEMO_MAGEC,
     MIGR_IMM1CTZ.dataset_id: MIGR_IMM1CTZ,
     MIGR_EMI1CTZ.dataset_id: MIGR_EMI1CTZ,
+    STS_INPR_M.dataset_id: STS_INPR_M,
 }

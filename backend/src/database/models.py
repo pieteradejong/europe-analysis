@@ -34,6 +34,7 @@ class DataSource(Base):
 
     # Relationships
     demographic_data = relationship("DemographicData", back_populates="data_source")
+    industrial_data = relationship("IndustrialData", back_populates="data_source")
 
     def __repr__(self) -> str:
         return f"<DataSource(id={self.id}, name='{self.name}', type='{self.type}')>"
@@ -57,6 +58,7 @@ class Region(Base):
 
     # Relationships
     demographic_data = relationship("DemographicData", back_populates="region")
+    industrial_data = relationship("IndustrialData", back_populates="region")
 
     def __repr__(self) -> str:
         return f"<Region(id={self.id}, code='{self.code}', name='{self.name}')>"
@@ -102,4 +104,49 @@ class DemographicData(Base):
             f"<DemographicData(id={self.id}, region_id={self.region_id}, "
             f"year={self.year}, age={self.age_min}-{self.age_max}, "
             f"gender={self.gender}, population={self.population})>"
+        )
+
+
+class IndustrialData(Base):
+    """Model representing industrial production data for a region."""
+
+    __tablename__ = "industrial_data"
+
+    id = Column(Integer, primary_key=True, index=True)
+    region_id = Column(Integer, ForeignKey("regions.id"), nullable=False, index=True)
+    data_source_id = Column(
+        Integer, ForeignKey("data_sources.id"), nullable=False, index=True
+    )
+    year = Column(Integer, nullable=True, index=True)
+    month = Column(Integer, nullable=True)  # 1-12 for monthly data
+    nace_code = Column(
+        String, nullable=True
+    )  # Industry classification (e.g., "B-D", "C")
+    index_value = Column(
+        Integer, nullable=True
+    )  # Industrial production index (2015=100)
+    unit = Column(String, nullable=True)  # e.g., "I15" (index 2015=100)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    region = relationship("Region", back_populates="industrial_data")
+    data_source = relationship("DataSource", back_populates="industrial_data")
+
+    # Composite index for fast queries
+    __table_args__ = (
+        Index(
+            "idx_industrial_region_year_month",
+            "region_id",
+            "year",
+            "month",
+            "nace_code",
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<IndustrialData(id={self.id}, region_id={self.region_id}, "
+            f"year={self.year}, month={self.month}, nace_code={self.nace_code}, "
+            f"index_value={self.index_value})>"
         )

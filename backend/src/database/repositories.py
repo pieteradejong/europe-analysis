@@ -12,7 +12,7 @@ from typing import Any
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
-from .models import DataSource, DemographicData, Region
+from .models import DataSource, DemographicData, IndustrialData, Region
 
 logger = logging.getLogger(__name__)
 
@@ -290,11 +290,11 @@ class DemographicRepository:
         year: int | None = None,
     ) -> dict[str, Any]:
         """
-        Get demographic statistics for a region/year.
+        Get demographic statistics.
 
         Args:
-            region_id: Region ID
-            year: Year
+            region_id: Optional region ID to filter
+            year: Optional year to filter
 
         Returns:
             Dictionary with statistics
@@ -303,27 +303,20 @@ class DemographicRepository:
 
         if region_id:
             query = query.filter(DemographicData.region_id == region_id)
-
         if year:
             query = query.filter(DemographicData.year == year)
 
-        total_population = (
-            query.with_entities(func.sum(DemographicData.population)).scalar() or 0
-        )
+        total_records = query.count()
 
-        by_gender = (
-            query.with_entities(
-                DemographicData.gender,
-                func.sum(DemographicData.population).label("population"),
-            )
-            .group_by(DemographicData.gender)
-            .all()
-        )
+        # Get year range
+        min_year = query.with_entities(func.min(DemographicData.year)).scalar()
+        max_year = query.with_entities(func.max(DemographicData.year)).scalar()
+
+        years_covered = f"{min_year}-{max_year}" if min_year and max_year else "N/A"
 
         return {
-            "total_population": total_population,
-            "by_gender": {row[0]: row[1] for row in by_gender},
-            "record_count": query.count(),
+            "total_records": total_records,
+            "years_covered": years_covered,
         }
 
     def delete_by_source(self, data_source_id: int) -> int:
@@ -343,4 +336,164 @@ class DemographicRepository:
         )
         self.session.flush()
         logger.info("Deleted %d records for data source %d", count, data_source_id)
+        return count
+
+
+class IndustrialRepository:
+    """Repository for IndustrialData operations."""
+
+    def __init__(self, session: Session) -> None:
+        """
+        Initialize repository with database session.
+
+        Args:
+            session: SQLAlchemy session
+        """
+        self.session = session
+
+    def bulk_insert(
+        self,
+        records: list[dict[str, Any]],
+        region_id: int,
+        data_source_id: int,
+    ) -> int:
+        """
+        Bulk insert industrial records.
+
+        Args:
+            records: List of normalized industrial records
+            region_id: Region ID
+            data_source_id: Data source ID
+
+        Returns:
+            Number of records inserted
+        """
+        industrial_objects = []
+        for record in records:
+            industrial = IndustrialData(
+                region_id=region_id,
+                data_source_id=data_source_id,
+                year=record.get("year"),
+                month=record.get("month"),
+                nace_code=record.get("nace_code"),
+                index_value=record.get("index_value"),
+                unit=record.get("unit"),
+            )
+            industrial_objects.append(industrial)
+
+        self.session.bulk_save_objects(industrial_objects)
+        self.session.flush()
+        count = len(industrial_objects)
+        logger.info("Bulk inserted %d industrial records", count)
+        return count
+
+    def query(
+        self,
+        region_id: int | None = None,
+        region_code: str | None = None,
+        year: int | None = None,
+        month: int | None = None,
+        nace_code: str | None = None,
+        limit: int | None = None,
+    ) -> list[IndustrialData]:
+        """
+        Query industrial data with filters.
+
+        Args:
+            region_id: Filter by region ID
+            region_code: Filter by region code
+            year: Filter by year
+            month: Filter by month (1-12)
+            nace_code: Filter by NACE industry code
+            limit: Maximum number of results
+
+        Returns:
+            List of IndustrialData instances
+        """
+        query = self.session.query(IndustrialData)
+
+        if region_id:
+            query = query.filter(IndustrialData.region_id == region_id)
+        elif region_code:
+            query = query.join(Region).filter(Region.code == region_code)
+
+        if year:
+            query = query.filter(IndustrialData.year == year)
+
+        if month:
+            query = query.filter(IndustrialData.month == month)
+
+        if nace_code:
+            query = query.filter(IndustrialData.nace_code == nace_code)
+
+        # Order by year and month descending for latest first
+        query = query.order_by(
+            IndustrialData.year.desc(),
+            IndustrialData.month.desc(),
+        )
+
+        if limit:
+            query = query.limit(limit)
+
+        return query.all()
+
+    def get_statistics(
+        self,
+        region_id: int | None = None,
+        year: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get industrial data statistics.
+
+        Args:
+            region_id: Optional region ID to filter
+            year: Optional year to filter
+
+        Returns:
+            Dictionary with statistics
+        """
+        query = self.session.query(IndustrialData)
+
+        if region_id:
+            query = query.filter(IndustrialData.region_id == region_id)
+        if year:
+            query = query.filter(IndustrialData.year == year)
+
+        total_records = query.count()
+
+        # Get year range
+        min_year = query.with_entities(func.min(IndustrialData.year)).scalar()
+        max_year = query.with_entities(func.max(IndustrialData.year)).scalar()
+
+        years_covered = f"{min_year}-{max_year}" if min_year and max_year else "N/A"
+
+        # Get unique NACE codes
+        nace_codes = query.with_entities(IndustrialData.nace_code).distinct().all()
+        nace_codes = [code[0] for code in nace_codes if code[0]]
+
+        return {
+            "total_records": total_records,
+            "years_covered": years_covered,
+            "nace_codes": nace_codes,
+        }
+
+    def delete_by_source(self, data_source_id: int) -> int:
+        """
+        Delete all industrial data from a specific source.
+
+        Args:
+            data_source_id: Data source ID
+
+        Returns:
+            Number of records deleted
+        """
+        count = (
+            self.session.query(IndustrialData)
+            .filter(IndustrialData.data_source_id == data_source_id)
+            .delete()
+        )
+        self.session.flush()
+        logger.info(
+            "Deleted %d industrial records for data source %d", count, data_source_id
+        )
         return count
