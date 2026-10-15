@@ -1,7 +1,15 @@
-#!/bin/bash
-
-# Exit on error
+#!/usr/bin/env bash
+# run.sh — start the backend (:8000) and the frontend (:5173) together and wait for both.
+#   ./run.sh         start both (Ctrl+C stops them)
+#   ./run.sh test    run ./test.sh
 set -e
+cd "$(dirname "$0")"
+case "${1:-}" in
+    -h|--help|help) sed -n '2,4p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    test)           shift; exec ./test.sh "$@" ;;
+    "")             ;;
+    *)              echo "usage: ./run.sh [test|help]" >&2; exit 2 ;;
+esac
 
 # Function to print section headers
 print_section() {
@@ -14,9 +22,10 @@ print_section() {
 check_service() {
     local url=$1
     local expected_status=$2
-    local response=$(curl -s -w "\n%{http_code}" "$url")
-    local body=$(echo "$response" | head -n1)
-    local status_code=$(echo "$response" | tail -n1)
+    local response
+    response=$(curl -s -w "\n%{http_code}" "$url")
+    local status_code
+    status_code=$(echo "$response" | tail -n1)
     
     if [ "$status_code" = "$expected_status" ]; then
         return 0
@@ -39,13 +48,13 @@ ensure_port_free() {
     pids=$(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | tr '\n' ' ' | xargs echo 2>/dev/null || true)
 
     if [ -n "$pids" ]; then
-        echo "⚠️  Port $port is already in use. Attempting to stop existing $service_name process(es): $pids"
+        echo "WARNING: Port $port is already in use. Attempting to stop existing $service_name process(es): $pids"
         # Try graceful stop first, then force.
         kill $pids 2>/dev/null || true
         sleep 1
         pids=$(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | tr '\n' ' ' | xargs echo 2>/dev/null || true)
         if [ -n "$pids" ]; then
-            echo "⚠️  Port $port still in use. Forcing stop of: $pids"
+            echo "WARNING: Port $port still in use. Forcing stop of: $pids"
             kill -9 $pids 2>/dev/null || true
             sleep 1
         fi
@@ -53,7 +62,7 @@ ensure_port_free() {
 
     # Final check
     if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
-        echo "❌ Port $port is still in use; cannot start $service_name."
+        echo "ERROR: Port $port is still in use; cannot start $service_name."
         echo "   Run: lsof -nP -iTCP:$port -sTCP:LISTEN"
         echo "   Then kill the PID(s) (or stop the other run.sh instance)."
         exit 1
@@ -73,13 +82,13 @@ wait_for_service() {
         if [ "$service" = "Frontend" ]; then
             # For frontend, we just check if the port is open
             if curl -s -f "http://localhost:5173" > /dev/null; then
-                echo "✅ $service is ready!"
+                echo "$service is ready!"
                 return 0
             fi
         else
             # For backend, we check the health endpoint
             if check_service "$url" "$expected_status"; then
-                echo "✅ $service is ready!"
+                echo "$service is ready!"
                 return 0
             fi
         fi
@@ -92,7 +101,7 @@ wait_for_service() {
         sleep 2
         attempt=$((attempt + 1))
     done
-    echo "❌ $service failed to start after $max_attempts attempts"
+    echo "ERROR: $service failed to start after $max_attempts attempts"
     if [ -f "backend/logs/backend.log" ]; then
         echo "Backend logs:"
         cat backend/logs/backend.log
@@ -115,7 +124,7 @@ start_service() {
         $command > "$log_file" 2>&1 &
     fi
     echo $! > "${name}.pid"
-    echo "✅ $name started (PID: $(cat ${name}.pid))"
+    echo "$name started (PID: $(cat ${name}.pid))"
 }
 
 # Function to stop a service
@@ -123,9 +132,9 @@ stop_service() {
     local name=$1
     if [ -f "${name}.pid" ]; then
         echo "Stopping $name..."
-        kill $(cat "${name}.pid") 2>/dev/null || true
+        kill "$(cat "${name}.pid")" 2>/dev/null || true
         rm "${name}.pid"
-        echo "✅ $name stopped"
+        echo "$name stopped"
     fi
 }
 
@@ -144,13 +153,14 @@ trap cleanup EXIT INT TERM
 # Function to check Python version
 check_python_version() {
     local required_version="3.12.0"
-    local current_version=$(python3.12 -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')
+    local current_version
+    current_version=$(python3.12 -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')
     
     if [ "$(printf '%s\n' "$required_version" "$current_version" | sort -V | head -n1)" != "$required_version" ]; then
-        echo "❌ Python version $required_version or higher is required. Current version: $current_version"
+        echo "ERROR: Python version $required_version or higher is required. Current version: $current_version"
         exit 1
     fi
-    echo "✅ Python version $current_version is compatible"
+    echo "Python version $current_version is compatible"
 }
 
 # Function to check required environment variables
@@ -165,29 +175,29 @@ check_env_vars() {
     done
     
     if [ ${#missing_vars[@]} -ne 0 ]; then
-        echo "❌ Missing required environment variables:"
+        echo "ERROR: Missing required environment variables:"
         printf '%s\n' "${missing_vars[@]}"
         echo "Please set these variables in your .env file"
         exit 1
     fi
-    echo "✅ All required environment variables are set"
+    echo "All required environment variables are set"
 }
 
 # Function to check frontend dependencies
 check_frontend_deps() {
     if [ ! -f "frontend/package.json" ]; then
-        echo "❌ Frontend package.json not found"
+        echo "ERROR: Frontend package.json not found"
         exit 1
     fi
     
     if [ ! -d "frontend/node_modules" ]; then
-        echo "❌ Frontend node_modules not found. Please run 'npm install' in the frontend directory"
+        echo "ERROR: Frontend node_modules not found. Please run 'npm install' in the frontend directory"
         exit 1
     fi
-    echo "✅ Frontend dependencies are installed"
+    echo "Frontend dependencies are installed"
 }
 
-print_section "🚀 Starting Application"
+print_section "Starting Application"
 
 # Check Python version
 check_python_version
@@ -197,23 +207,24 @@ check_env_vars
 
 # Check if virtual environment exists
 if [ ! -d "venv" ]; then
-    echo "❌ Virtual environment not found. Please run ./init.sh first"
+    echo "ERROR: Virtual environment not found. Please run ./init.sh first"
     exit 1
 fi
 
 # Function to verify Python environment
 verify_python_env() {
-    local python_path=$(which python3.12)
+    local python_path
+    python_path=$(which python3.12)
     if [[ ! "$python_path" =~ "venv" ]]; then
-        echo "❌ Python3.12 is not running from virtual environment: $python_path"
+        echo "ERROR: Python3.12 is not running from virtual environment: $python_path"
         echo "Please ensure you're running the script from the project root directory"
         exit 1
     fi
-    echo "✅ Using Python3.12 from virtual environment: $python_path"
+    echo "Using Python3.12 from virtual environment: $python_path"
 }
 
 # Activate virtual environment
-echo "🔧 Activating virtual environment..."
+echo "Activating virtual environment..."
 source venv/bin/activate
 
 # Verify Python environment
@@ -221,11 +232,11 @@ verify_python_env
 
 # Verify uvicorn is installed in virtual environment
 if ! python3.12 -c "import uvicorn" 2>/dev/null; then
-    echo "❌ uvicorn is not installed in virtual environment"
+    echo "ERROR: uvicorn is not installed in virtual environment"
     echo "Please run ./init.sh to install dependencies"
     exit 1
 fi
-echo "✅ uvicorn is installed in virtual environment"
+echo "uvicorn is installed in virtual environment"
 
 # Create logs directory if it doesn't exist
 mkdir -p backend/logs
@@ -236,9 +247,9 @@ echo "Checking for pending database migrations..."
 mkdir -p backend/data
 cd backend
 if python3.12 -m alembic upgrade head; then
-    echo "✅ Database migrations up to date"
+    echo "Database migrations up to date"
 else
-    echo "❌ Failed to apply database migrations"
+    echo "ERROR: Failed to apply database migrations"
     exit 1
 fi
 cd ..
@@ -256,7 +267,7 @@ wait_for_service "Backend" "http://localhost:8000/health" "200" 10
 # Check backend services
 echo "Checking backend services..."
 if ! check_service "http://localhost:8000/health/model" "200"; then
-    echo "⚠️  Model service is not healthy"
+    echo "WARNING: Model service is not healthy"
 fi
 
 # Start Frontend
@@ -270,7 +281,7 @@ cd ..
 # Wait for frontend to be ready (using port check instead of HTTP status)
 wait_for_service "Frontend" "http://localhost:5173" "" 10
 
-print_section "✅ All Services Running"
+print_section "All Services Running"
 echo "The application is now available at:"
 echo "   - Frontend: http://localhost:5173"
 echo "   - Backend API: http://localhost:8000"
